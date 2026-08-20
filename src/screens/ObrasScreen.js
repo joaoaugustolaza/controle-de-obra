@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Linking, Platform, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -18,6 +18,8 @@ export default function ObrasScreen() {
   const [longitude, setLongitude] = useState(null);
   const [isOnline, setIsOnline] = useState(syncManager.getStatus().isOnline);
   const [capturandoLocalizacao, setCapturandoLocalizacao] = useState(false);
+  const [obraSelecionada, setObraSelecionada] = useState(null);
+  const [mostrarDetalhes, setMostrarDetalhes] = useState(false);
 
   useEffect(() => {
     carregarObras();
@@ -57,13 +59,18 @@ export default function ObrasScreen() {
     setLatitude(obra.latitude || null);
     setLongitude(obra.longitude || null);
     setMostrarFormulario(true);
+    setMostrarDetalhes(false);
+  }
+
+  function verDetalhes(obra) {
+    setObraSelecionada(obra);
+    setMostrarDetalhes(true);
   }
 
   async function capturarLocalizacaoAtual() {
     setCapturandoLocalizacao(true);
     
     try {
-      // Solicitar permissão
       let { status } = await Location.requestForegroundPermissionsAsync();
       
       if (status !== 'granted') {
@@ -72,7 +79,6 @@ export default function ObrasScreen() {
         return;
       }
 
-      // Obter localização atual
       let location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High
       });
@@ -140,6 +146,7 @@ export default function ObrasScreen() {
     if (result.success) {
       alert('Sucesso: Obra excluída!');
       carregarObras();
+      setMostrarDetalhes(false);
     }
   }
 
@@ -300,7 +307,6 @@ export default function ObrasScreen() {
                     <Text style={styles.coordenadasValor}>{longitude.toFixed(6)}</Text>
                   </View>
                   
-                  {/* Mini mapa de preview */}
                   <View style={styles.miniMapa}>
                     <MapView
                       style={styles.mapaPreview}
@@ -341,7 +347,11 @@ export default function ObrasScreen() {
             </View>
           ) : (
             obras.map((obra) => (
-              <View key={obra.id} style={styles.obraCard}>
+              <TouchableOpacity
+                key={obra.id}
+                style={styles.obraCard}
+                onPress={() => verDetalhes(obra)}
+              >
                 <View style={styles.obraHeader}>
                   <Text style={styles.obraNome}>{obra.nome}</Text>
                   <View style={[
@@ -377,28 +387,15 @@ export default function ObrasScreen() {
                   </View>
                 )}
 
-                {/* Botões de Mapa */}
-                {obra.latitude && obra.longitude && (
-                  <View style={styles.mapaBotoes}>
-                    <TouchableOpacity 
-                      style={styles.botaoMapa}
-                      onPress={() => abrirMapa(obra)}
-                    >
-                      <Ionicons name="map" size={16} color="#2563eb" />
-                      <Text style={styles.botaoMapaTexto}>Ver no Mapa</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity 
-                      style={styles.botaoDirecoes}
-                      onPress={() => abrirDirecoes(obra)}
-                    >
-                      <Ionicons name="navigate" size={16} color="#10b981" />
-                      <Text style={styles.botaoDirecoesTexto}>Como Chegar</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
                 <View style={styles.obraAcoes}>
+                  <TouchableOpacity 
+                    style={styles.botaoVerDetalhes}
+                    onPress={() => verDetalhes(obra)}
+                  >
+                    <Ionicons name="eye" size={18} color="#8b5cf6" />
+                    <Text style={styles.botaoVerDetalhesTexto}>Ver Detalhes</Text>
+                  </TouchableOpacity>
+
                   <TouchableOpacity 
                     style={styles.botaoEditar}
                     onPress={() => iniciarEdicao(obra)}
@@ -415,11 +412,142 @@ export default function ObrasScreen() {
                     <Text style={styles.botaoExcluirTexto}>Excluir</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </View>
       </View>
+
+      {/* Modal de Detalhes da Obra */}
+      <Modal
+        visible={mostrarDetalhes}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setMostrarDetalhes(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitulo}>Detalhes da Obra</Text>
+              <TouchableOpacity onPress={() => setMostrarDetalhes(false)}>
+                <Ionicons name="close" size={28} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            {obraSelecionada && (
+              <ScrollView style={styles.modalBody}>
+                <View style={styles.detalheItem}>
+                  <Text style={styles.detalheLabel}>Nome:</Text>
+                  <Text style={styles.detalheValor}>{obraSelecionada.nome}</Text>
+                </View>
+
+                {obraSelecionada.endereco && (
+                  <View style={styles.detalheItem}>
+                    <Text style={styles.detalheLabel}>Endereço:</Text>
+                    <Text style={styles.detalheValor}>{obraSelecionada.endereco}</Text>
+                  </View>
+                )}
+
+                {obraSelecionada.responsavel && (
+                  <View style={styles.detalheItem}>
+                    <Text style={styles.detalheLabel}>Responsável:</Text>
+                    <Text style={styles.detalheValor}>{obraSelecionada.responsavel}</Text>
+                  </View>
+                )}
+
+                {obraSelecionada.data_inicio && (
+                  <View style={styles.detalheItem}>
+                    <Text style={styles.detalheLabel}>Data de Início:</Text>
+                    <Text style={styles.detalheValor}>
+                      {obraSelecionada.data_inicio.split('-').reverse().join('/')}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.detalheItem}>
+                  <Text style={styles.detalheLabel}>Status:</Text>
+                  <View style={[
+                    styles.statusBadgeDetalhe,
+                    obraSelecionada.status === 'Ativa' && styles.statusAtiva,
+                    obraSelecionada.status === 'Paralisada' && styles.statusParalisada,
+                    obraSelecionada.status === 'Concluída' && styles.statusConcluida
+                  ]}>
+                    <Text style={styles.statusBadgeTexto}>{obraSelecionada.status}</Text>
+                  </View>
+                </View>
+
+                {obraSelecionada.latitude && obraSelecionada.longitude && (
+                  <>
+                    <View style={styles.detalheItem}>
+                      <Text style={styles.detalheLabel}>Localização:</Text>
+                      <Text style={styles.detalheValor}>
+                        {obraSelecionada.latitude.toFixed(6)}, {obraSelecionada.longitude.toFixed(6)}
+                      </Text>
+                    </View>
+
+                    <View style={styles.mapaDetalhe}>
+                      <MapView
+                        style={styles.mapaDetalhePreview}
+                        initialRegion={{
+                          latitude: obraSelecionada.latitude,
+                          longitude: obraSelecionada.longitude,
+                          latitudeDelta: 0.01,
+                          longitudeDelta: 0.01,
+                        }}
+                        scrollEnabled={false}
+                        zoomEnabled={false}
+                      >
+                        <Marker 
+                          coordinate={{ 
+                            latitude: obraSelecionada.latitude, 
+                            longitude: obraSelecionada.longitude 
+                          }} 
+                        />
+                      </MapView>
+                    </View>
+
+                    <View style={styles.botoesMapa}>
+                      <TouchableOpacity 
+                        style={styles.botaoMapaDetalhe}
+                        onPress={() => abrirMapa(obraSelecionada)}
+                      >
+                        <Ionicons name="map" size={20} color="#2563eb" />
+                        <Text style={styles.botaoMapaDetalheTexto}>Ver no Mapa</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity 
+                        style={styles.botaoDirecoesDetalhe}
+                        onPress={() => abrirDirecoes(obraSelecionada)}
+                      >
+                        <Ionicons name="navigate" size={20} color="#10b981" />
+                        <Text style={styles.botaoDirecoesDetalheTexto}>Como Chegar</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+
+                <View style={styles.modalBotoes}>
+                  <TouchableOpacity 
+                    style={styles.botaoEditarDetalhe}
+                    onPress={() => iniciarEdicao(obraSelecionada)}
+                  >
+                    <Ionicons name="create" size={20} color="#fff" />
+                    <Text style={styles.botaoEditarDetalheTexto}>Editar Obra</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.botaoExcluirDetalhe}
+                    onPress={() => excluirObra(obraSelecionada.id)}
+                  >
+                    <Ionicons name="trash" size={20} color="#fff" />
+                    <Text style={styles.botaoExcluirDetalheTexto}>Excluir Obra</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -574,31 +702,6 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   obraInfoTexto: { fontSize: 12, color: '#64748b', marginLeft: 5 },
-  mapaBotoes: {
-    flexDirection: 'row',
-    marginTop: 10,
-    gap: 10,
-  },
-  botaoMapa: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#eff6ff',
-    padding: 8,
-    borderRadius: 6,
-  },
-  botaoMapaTexto: { color: '#2563eb', fontSize: 12, fontWeight: 'bold', marginLeft: 5 },
-  botaoDirecoes: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ecfdf5',
-    padding: 8,
-    borderRadius: 6,
-  },
-  botaoDirecoesTexto: { color: '#10b981', fontSize: 12, fontWeight: 'bold', marginLeft: 5 },
   obraAcoes: {
     flexDirection: 'row',
     marginTop: 10,
@@ -607,6 +710,16 @@ const styles = StyleSheet.create({
     borderTopColor: '#e2e8f0',
     gap: 10,
   },
+  botaoVerDetalhes: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f5f3ff',
+    padding: 8,
+    borderRadius: 6,
+  },
+  botaoVerDetalhesTexto: { color: '#8b5cf6', fontSize: 12, fontWeight: 'bold', marginLeft: 5 },
   botaoEditar: {
     flex: 1,
     flexDirection: 'row',
@@ -627,4 +740,113 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   botaoExcluirTexto: { color: '#ef4444', fontSize: 12, fontWeight: 'bold', marginLeft: 5 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  modalTitulo: { fontSize: 20, fontWeight: 'bold', color: '#1e293b' },
+  modalBody: {
+    padding: 20,
+  },
+  detalheItem: {
+    marginBottom: 15,
+  },
+  detalheLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    marginBottom: 5,
+  },
+  detalheValor: {
+    fontSize: 16,
+    color: '#1e293b',
+    fontWeight: '500',
+  },
+  statusBadgeDetalhe: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  statusBadgeTexto: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  mapaDetalhe: {
+    marginTop: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+    height: 200,
+  },
+  mapaDetalhePreview: {
+    width: '100%',
+    height: '100%',
+  },
+  botoesMapa: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 15,
+  },
+  botaoMapaDetalhe: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eff6ff',
+    padding: 12,
+    borderRadius: 8,
+  },
+  botaoMapaDetalheTexto: { color: '#2563eb', fontSize: 14, fontWeight: 'bold', marginLeft: 8 },
+  botaoDirecoesDetalhe: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ecfdf5',
+    padding: 12,
+    borderRadius: 8,
+  },
+  botaoDirecoesDetalheTexto: { color: '#10b981', fontSize: 14, fontWeight: 'bold', marginLeft: 8 },
+  modalBotoes: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  botaoEditarDetalhe: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563eb',
+    padding: 12,
+    borderRadius: 8,
+  },
+  botaoEditarDetalheTexto: { color: '#fff', fontSize: 14, fontWeight: 'bold', marginLeft: 8 },
+  botaoExcluirDetalhe: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ef4444',
+    padding: 12,
+    borderRadius: 8,
+  },
+  botaoExcluirDetalheTexto: { color: '#fff', fontSize: 14, fontWeight: 'bold', marginLeft: 8 },
 });
