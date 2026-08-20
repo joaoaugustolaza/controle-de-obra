@@ -253,40 +253,57 @@ export default function RelatoriosScreen() {
     try {
       const html = gerarHTMLRelatorio(relatorio);
 
-      // Criar um Blob com o conteúdo HTML
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
+      // Detectar se é dispositivo móvel
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-      // Abrir em nova aba
-      const novaAba = window.open(url, '_blank');
-
-      if (novaAba) {
-        // Aguardar a aba carregar
-        novaAba.addEventListener('load', () => {
-          setTimeout(() => {
-            novaAba.focus();
-            novaAba.print();
-          }, 500);
-        });
-
-        // Limpar o URL após 10 segundos
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-        }, 10000);
-
-        alert('Sucesso: PDF gerado! Na caixa de impressão, escolha "Salvar como PDF".');
-      } else {
-        // Se o pop-up foi bloqueado, usar abordagem alternativa
+      if (isMobile) {
+        // Em dispositivos móveis: baixar o arquivo HTML diretamente
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `relatorio-${relatorio.obra}-${Date.now()}.html`;
+        link.download = `relatorio-${relatorio.obra.replace(/\s+/g, '-')}-${Date.now()}.html`;
+        document.body.appendChild(link);
         link.click();
-        
+        document.body.removeChild(link);
+
         setTimeout(() => {
           URL.revokeObjectURL(url);
         }, 1000);
 
-        alert('Sucesso: Arquivo HTML baixado! Abra o arquivo e use Ctrl+P para imprimir como PDF.');
+        alert('Sucesso: Arquivo HTML baixado! Abra o arquivo no navegador e use a opção de imprimir para salvar como PDF.');
+      } else {
+        // Em desktop: tentar abrir em nova aba
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const novaAba = window.open(url, '_blank');
+
+        if (novaAba) {
+          novaAba.addEventListener('load', () => {
+            setTimeout(() => {
+              novaAba.focus();
+              novaAba.print();
+            }, 500);
+          });
+
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+          }, 10000);
+
+          alert('Sucesso: PDF gerado! Na caixa de impressão, escolha "Salvar como PDF".');
+        } else {
+          // Fallback se pop-up for bloqueado
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `relatorio-${relatorio.obra.replace(/\s+/g, '-')}-${Date.now()}.html`;
+          link.click();
+
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+          }, 1000);
+
+          alert('Sucesso: Arquivo HTML baixado! Abra o arquivo e use Ctrl+P para imprimir como PDF.');
+        }
       }
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
