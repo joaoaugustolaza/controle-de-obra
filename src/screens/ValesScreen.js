@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../services/supabase';
 
@@ -72,19 +72,19 @@ export default function ValesScreen() {
 
   async function salvarVale() {
     if (!obraSelecionada) {
-      Alert.alert('Atenção', 'Selecione uma obra');
+      alert('Atenção: Selecione uma obra');
       return;
     }
     if (!funcionarioSelecionado) {
-      Alert.alert('Atenção', 'Selecione um funcionário');
+      alert('Atenção: Selecione um funcionário');
       return;
     }
     if (!valor || parseFloat(valor) <= 0) {
-      Alert.alert('Atenção', 'Informe um valor válido');
+      alert('Atenção: Informe um valor válido');
       return;
     }
     if (!data) {
-      Alert.alert('Atenção', 'Informe a data');
+      alert('Atenção: Informe a data');
       return;
     }
 
@@ -101,9 +101,9 @@ export default function ValesScreen() {
       }]);
 
     if (error) {
-      Alert.alert('Erro', 'Não foi possível salvar o vale: ' + error.message);
+      alert('Erro: Não foi possível salvar o vale - ' + error.message);
     } else {
-      Alert.alert('Sucesso', 'Vale registrado com sucesso!');
+      alert('Sucesso: Vale registrado com sucesso!');
       setValor('');
       setDescricao('');
       setFuncionarioSelecionado(null);
@@ -133,15 +133,15 @@ export default function ValesScreen() {
 
   async function atualizarVale() {
     if (!funcionarioSelecionado) {
-      Alert.alert('Atenção', 'Selecione um funcionário');
+      alert('Atenção: Selecione um funcionário');
       return;
     }
     if (!valor || parseFloat(valor) <= 0) {
-      Alert.alert('Atenção', 'Informe um valor válido');
+      alert('Atenção: Informe um valor válido');
       return;
     }
     if (!data) {
-      Alert.alert('Atenção', 'Informe a data');
+      alert('Atenção: Informe a data');
       return;
     }
 
@@ -158,9 +158,9 @@ export default function ValesScreen() {
       .eq('id', valeEditando.id);
 
     if (error) {
-      Alert.alert('Erro', 'Não foi possível atualizar o vale: ' + error.message);
+      alert('Erro: Não foi possível atualizar o vale - ' + error.message);
     } else {
-      Alert.alert('Sucesso', 'Vale atualizado com sucesso!');
+      alert('Sucesso: Vale atualizado com sucesso!');
       cancelarEdicao();
       carregarVales();
     }
@@ -169,30 +169,23 @@ export default function ValesScreen() {
   }
 
   async function excluirVale(id) {
-    Alert.alert(
-      'Confirmar Exclusão',
-      'Deseja realmente excluir este vale?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            const { error } = await supabase
-              .from('vales')
-              .delete()
-              .eq('id', id);
+    const confirmar = window.confirm('Deseja realmente excluir este vale?');
+    
+    if (!confirmar) {
+      return;
+    }
 
-            if (error) {
-              Alert.alert('Erro', 'Não foi possível excluir: ' + error.message);
-            } else {
-              Alert.alert('Sucesso', 'Vale excluído!');
-              carregarVales();
-            }
-          }
-        }
-      ]
-    );
+    const { error } = await supabase
+      .from('vales')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      alert('Erro: Não foi possível excluir - ' + error.message);
+    } else {
+      alert('Sucesso: Vale excluído!');
+      carregarVales();
+    }
   }
 
   const totalVales = vales.reduce((acc, vale) => acc + vale.valor, 0);
@@ -299,7 +292,7 @@ export default function ValesScreen() {
                       <Text style={styles.botaoCancelarTexto}>Cancelar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
-                      style={styles.botaoSalvar}
+                      style={styles.botaoAtualizar}
                       onPress={atualizarVale}
                       disabled={salvando}
                     >
@@ -437,9 +430,15 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: 'center',
     flex: 1,
+  },
+  botaoAtualizar: {
+    backgroundColor: '#f59e0b',
+    borderRadius: 8,
+    padding: 15,
+    alignItems: 'center',
+    flex: 1,
     marginLeft: 10,
   },
-  botaoSalvarTexto: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   botaoCancelar: {
     backgroundColor: '#64748b',
     borderRadius: 8,
@@ -448,6 +447,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 10,
   },
+  botaoSalvarTexto: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   botaoCancelarTexto: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   listaVales: {
     backgroundColor: '#fff',
