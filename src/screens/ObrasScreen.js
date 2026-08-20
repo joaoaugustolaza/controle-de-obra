@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import MapView, { Marker } from 'react-native-maps';
+import * as Location from 'expo-location';
 import { syncManager } from '../services/syncManager';
 
 export default function ObrasScreen() {
@@ -12,20 +14,20 @@ export default function ObrasScreen() {
   const [responsavel, setResponsavel] = useState('');
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0]);
   const [status, setStatus] = useState('Ativa');
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
   const [isOnline, setIsOnline] = useState(syncManager.getStatus().isOnline);
+  const [capturandoLocalizacao, setCapturandoLocalizacao] = useState(false);
 
   useEffect(() => {
     carregarObras();
     
-    // Monitorar status online/offline
     const listener = (status) => {
       setIsOnline(status === 'online' || status === 'synced');
     };
     syncManager.addListener(listener);
     
-    return () => {
-      // Remover listener ao desmontar
-    };
+    return () => {};
   }, []);
 
   async function carregarObras() {
@@ -39,6 +41,8 @@ export default function ObrasScreen() {
     setResponsavel('');
     setDataInicio(new Date().toISOString().split('T')[0]);
     setStatus('Ativa');
+    setLatitude(null);
+    setLongitude(null);
     setEditando(null);
     setMostrarFormulario(false);
   }
@@ -50,7 +54,39 @@ export default function ObrasScreen() {
     setResponsavel(obra.responsavel || '');
     setDataInicio(obra.data_inicio || new Date().toISOString().split('T')[0]);
     setStatus(obra.status || 'Ativa');
+    setLatitude(obra.latitude || null);
+    setLongitude(obra.longitude || null);
     setMostrarFormulario(true);
+  }
+
+  async function capturarLocalizacaoAtual() {
+    setCapturandoLocalizacao(true);
+    
+    try {
+      // Solicitar permissão
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      
+      if (status !== 'granted') {
+        alert('Permissão negada: Não foi possível acessar a localização');
+        setCapturandoLocalizacao(false);
+        return;
+      }
+
+      // Obter localização atual
+      let location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High
+      });
+      
+      setLatitude(location.coords.latitude);
+      setLongitude(location.coords.longitude);
+      
+      alert('Sucesso: Localização capturada!');
+    } catch (error) {
+      console.error('Erro ao capturar localização:', error);
+      alert('Erro: Não foi possível capturar a localização - ' + error.message);
+    } finally {
+      setCapturandoLocalizacao(false);
+    }
   }
 
   async function salvarObra() {
@@ -64,11 +100,12 @@ export default function ObrasScreen() {
       endereco: endereco.trim(),
       responsavel: responsavel.trim(),
       data_inicio: dataInicio,
-      status: status
+      status: status,
+      latitude: latitude,
+      longitude: longitude
     };
 
     if (editando) {
-      // Atualizar obra existente
       const result = await syncManager.saveData('obras', {
         ...editando,
         ...obraData
@@ -80,7 +117,6 @@ export default function ObrasScreen() {
         carregarObras();
       }
     } else {
-      // Criar nova obra
       const result = await syncManager.saveData('obras', {
         ...obraData,
         id: Date.now().toString(),
@@ -105,6 +141,36 @@ export default function ObrasScreen() {
       alert('Sucesso: Obra excluída!');
       carregarObras();
     }
+  }
+
+  function abrirMapa(obra) {
+    if (!obra.latitude || !obra.longitude) {
+      alert('Atenção: Esta obra não tem localização registrada');
+      return;
+    }
+
+    const url = Platform.select({
+      ios: `maps://0,0?q=${obra.latitude},${obra.longitude}(${obra.nome})`,
+      android: `geo:${obra.latitude},${obra.longitude}?q=${obra.latitude},${obra.longitude}(${obra.nome})`,
+      web: `https://www.google.com/maps/search/?api=1&query=${obra.latitude},${obra.longitude}`
+    });
+
+    Linking.openURL(url);
+  }
+
+  function abrirDirecoes(obra) {
+    if (!obra.latitude || !obra.longitude) {
+      alert('Atenção: Esta obra não tem localização registrada');
+      return;
+    }
+
+    const url = Platform.select({
+      ios: `maps://0,0?saddr=&daddr=${obra.latitude},${obra.longitude}&dirflg=d`,
+      android: `google.navigation:q=${obra.latitude},${obra.longitude}`,
+      web: `https://www.google.com/maps/dir/?api=1&destination=${obra.latitude},${obra.longitude}`
+    });
+
+    Linking.openURL(url);
   }
 
   return (
@@ -204,6 +270,56 @@ export default function ObrasScreen() {
               </View>
             </View>
 
+            {/* Seção de Localização */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Localização (GPS)</Text>
+              
+              <TouchableOpacity 
+                style={styles.botaoLocalizacao}
+                onPress={capturarLocalizacaoAtual}
+                disabled={capturandoLocalizacao}
+              >
+                <Ionicons 
+                  name={capturandoLocalizacao ? 'hourglass' : 'location'} 
+                  size={20} 
+                  color="#fff" 
+                />
+                <Text style={styles.botaoLocalizacaoTexto}>
+                  {capturandoLocalizacao ? 'Capturando...' : 'Capturar Localização Atual'}
+                </Text>
+              </TouchableOpacity>
+
+              {(latitude && longitude) && (
+                <View style={styles.localizacaoInfo}>
+                  <View style={styles.coordenadasContainer}>
+                    <Text style={styles.coordenadasLabel}>Latitude:</Text>
+                    <Text style={styles.coordenadasValor}>{latitude.toFixed(6)}</Text>
+                  </View>
+                  <View style={styles.coordenadasContainer}>
+                    <Text style={styles.coordenadasLabel}>Longitude:</Text>
+                    <Text style={styles.coordenadasValor}>{longitude.toFixed(6)}</Text>
+                  </View>
+                  
+                  {/* Mini mapa de preview */}
+                  <View style={styles.miniMapa}>
+                    <MapView
+                      style={styles.mapaPreview}
+                      initialRegion={{
+                        latitude: latitude,
+                        longitude: longitude,
+                        latitudeDelta: 0.01,
+                        longitudeDelta: 0.01,
+                      }}
+                      scrollEnabled={false}
+                      zoomEnabled={false}
+                    >
+                      <Marker coordinate={{ latitude, longitude }} />
+                    </MapView>
+                  </View>
+                </View>
+              )}
+            </View>
+
             <TouchableOpacity 
               style={styles.botaoSalvar}
               onPress={salvarObra}
@@ -258,6 +374,27 @@ export default function ObrasScreen() {
                     <Text style={styles.obraInfoTexto}>
                       Início: {obra.data_inicio.split('-').reverse().join('/')}
                     </Text>
+                  </View>
+                )}
+
+                {/* Botões de Mapa */}
+                {obra.latitude && obra.longitude && (
+                  <View style={styles.mapaBotoes}>
+                    <TouchableOpacity 
+                      style={styles.botaoMapa}
+                      onPress={() => abrirMapa(obra)}
+                    >
+                      <Ionicons name="map" size={16} color="#2563eb" />
+                      <Text style={styles.botaoMapaTexto}>Ver no Mapa</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={styles.botaoDirecoes}
+                      onPress={() => abrirDirecoes(obra)}
+                    >
+                      <Ionicons name="navigate" size={16} color="#10b981" />
+                      <Text style={styles.botaoDirecoesTexto}>Como Chegar</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
 
@@ -353,6 +490,41 @@ const styles = StyleSheet.create({
   statusButtonSelecionado: { backgroundColor: '#2563eb' },
   statusButtonText: { color: '#64748b', fontSize: 12, fontWeight: '500' },
   statusButtonTextSelecionado: { color: '#fff' },
+  botaoLocalizacao: {
+    backgroundColor: '#8b5cf6',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 5,
+  },
+  botaoLocalizacaoTexto: { color: '#fff', fontSize: 14, fontWeight: 'bold', marginLeft: 8 },
+  localizacaoInfo: {
+    backgroundColor: '#f0f9ff',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: '#0ea5e9',
+  },
+  coordenadasContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 5,
+  },
+  coordenadasLabel: { fontSize: 11, color: '#64748b' },
+  coordenadasValor: { fontSize: 11, fontWeight: 'bold', color: '#1e293b' },
+  miniMapa: {
+    marginTop: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+    height: 150,
+  },
+  mapaPreview: {
+    width: '100%',
+    height: '100%',
+  },
   botaoSalvar: {
     backgroundColor: '#10b981',
     borderRadius: 8,
@@ -402,6 +574,31 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   obraInfoTexto: { fontSize: 12, color: '#64748b', marginLeft: 5 },
+  mapaBotoes: {
+    flexDirection: 'row',
+    marginTop: 10,
+    gap: 10,
+  },
+  botaoMapa: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eff6ff',
+    padding: 8,
+    borderRadius: 6,
+  },
+  botaoMapaTexto: { color: '#2563eb', fontSize: 12, fontWeight: 'bold', marginLeft: 5 },
+  botaoDirecoes: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ecfdf5',
+    padding: 8,
+    borderRadius: 6,
+  },
+  botaoDirecoesTexto: { color: '#10b981', fontSize: 12, fontWeight: 'bold', marginLeft: 5 },
   obraAcoes: {
     flexDirection: 'row',
     marginTop: 10,
