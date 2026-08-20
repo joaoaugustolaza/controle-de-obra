@@ -11,6 +11,7 @@ import ObrasScreen from '../screens/ObrasScreen';
 import FuncionariosScreen from '../screens/FuncionariosScreen';
 import PontoScreen from '../screens/PontoScreen';
 import RelatoriosScreen from '../screens/RelatoriosScreen';
+import ValesScreen from '../screens/ValesScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -25,6 +26,7 @@ function MainTabs() {
           else if (route.name === 'Obras') iconName = focused ? 'business' : 'business-outline';
           else if (route.name === 'Ponto') iconName = focused ? 'camera' : 'camera-outline';
           else if (route.name === 'Relatorios') iconName = focused ? 'document-text' : 'document-text-outline';
+          else if (route.name === 'Vales') iconName = focused ? 'cash' : 'cash-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#2563eb',
@@ -35,6 +37,7 @@ function MainTabs() {
       <Tab.Screen name="Obras" component={ObrasScreen} options={{ title: 'Obras' }} />
       <Tab.Screen name="Ponto" component={PontoScreen} options={{ title: 'Marcar Ponto' }} />
       <Tab.Screen name="Relatorios" component={RelatoriosScreen} options={{ title: 'Relatórios' }} />
+      <Tab.Screen name="Vales" component={ValesScreen} options={{ title: 'Vales' }} />
     </Tab.Navigator>
   );
 }
