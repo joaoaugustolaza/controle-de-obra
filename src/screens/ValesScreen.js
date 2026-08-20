@@ -14,6 +14,8 @@ export default function ValesScreen() {
   const [vales, setVales] = useState([]);
   const [carregando, setCarregando] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [editando, setEditando] = useState(null);
+  const [valeEditando, setValeEditando] = useState(null);
 
   useEffect(() => {
     carregarObras();
@@ -104,6 +106,62 @@ export default function ValesScreen() {
       Alert.alert('Sucesso', 'Vale registrado com sucesso!');
       setValor('');
       setDescricao('');
+      setFuncionarioSelecionado(null);
+      carregarVales();
+    }
+
+    setSalvando(false);
+  }
+
+  function iniciarEdicao(vale) {
+    setEditando(vale.id);
+    setValeEditando(vale);
+    setFuncionarioSelecionado(vale.funcionario_id);
+    setValor(vale.valor.toString());
+    setData(vale.data);
+    setDescricao(vale.descricao || '');
+  }
+
+  function cancelarEdicao() {
+    setEditando(null);
+    setValeEditando(null);
+    setFuncionarioSelecionado(null);
+    setValor('');
+    setData(new Date().toISOString().split('T')[0]);
+    setDescricao('');
+  }
+
+  async function atualizarVale() {
+    if (!funcionarioSelecionado) {
+      Alert.alert('Atenção', 'Selecione um funcionário');
+      return;
+    }
+    if (!valor || parseFloat(valor) <= 0) {
+      Alert.alert('Atenção', 'Informe um valor válido');
+      return;
+    }
+    if (!data) {
+      Alert.alert('Atenção', 'Informe a data');
+      return;
+    }
+
+    setSalvando(true);
+
+    const { error } = await supabase
+      .from('vales')
+      .update({
+        funcionario_id: funcionarioSelecionado,
+        valor: parseFloat(valor),
+        data: data,
+        descricao: descricao || null
+      })
+      .eq('id', valeEditando.id);
+
+    if (error) {
+      Alert.alert('Erro', 'Não foi possível atualizar o vale: ' + error.message);
+    } else {
+      Alert.alert('Sucesso', 'Vale atualizado com sucesso!');
+      cancelarEdicao();
       carregarVales();
     }
 
@@ -173,7 +231,9 @@ export default function ValesScreen() {
         {obraSelecionada && (
           <>
             <View style={styles.formulario}>
-              <Text style={styles.formularioTitulo}>Novo Vale</Text>
+              <Text style={styles.formularioTitulo}>
+                {editando ? 'Editar Vale' : 'Novo Vale'}
+              </Text>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Funcionário:</Text>
@@ -229,15 +289,37 @@ export default function ValesScreen() {
                 />
               </View>
 
-              <TouchableOpacity 
-                style={styles.botaoSalvar}
-                onPress={salvarVale}
-                disabled={salvando}
-              >
-                <Text style={styles.botaoSalvarTexto}>
-                  {salvando ? 'Salvando...' : 'Salvar Vale'}
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.botoesContainer}>
+                {editando ? (
+                  <>
+                    <TouchableOpacity 
+                      style={styles.botaoCancelar}
+                      onPress={cancelarEdicao}
+                    >
+                      <Text style={styles.botaoCancelarTexto}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.botaoSalvar}
+                      onPress={atualizarVale}
+                      disabled={salvando}
+                    >
+                      <Text style={styles.botaoSalvarTexto}>
+                        {salvando ? 'Salvando...' : 'Atualizar Vale'}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <TouchableOpacity 
+                    style={styles.botaoSalvar}
+                    onPress={salvarVale}
+                    disabled={salvando}
+                  >
+                    <Text style={styles.botaoSalvarTexto}>
+                      {salvando ? 'Salvando...' : 'Salvar Vale'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
 
             <View style={styles.listaVales}>
@@ -256,9 +338,14 @@ export default function ValesScreen() {
                   <View key={vale.id} style={styles.valeCard}>
                     <View style={styles.valeHeader}>
                       <Text style={styles.valeNome}>{vale.funcionarios?.nome}</Text>
-                      <TouchableOpacity onPress={() => excluirVale(vale.id)}>
-                        <Ionicons name="trash" size={20} color="#ef4444" />
-                      </TouchableOpacity>
+                      <View style={styles.valeAcoes}>
+                        <TouchableOpacity onPress={() => iniciarEdicao(vale)}>
+                          <Ionicons name="create" size={20} color="#2563eb" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => excluirVale(vale.id)} style={{ marginLeft: 15 }}>
+                          <Ionicons name="trash" size={20} color="#ef4444" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                     <Text style={styles.valeCargo}>{vale.funcionarios?.cargo}</Text>
                     <View style={styles.valeInfo}>
@@ -339,14 +426,29 @@ const styles = StyleSheet.create({
   funcionarioButtonSelecionado: { backgroundColor: '#8b5cf6' },
   funcionarioButtonText: { color: '#64748b', fontSize: 13 },
   funcionarioButtonTextSelecionado: { color: '#fff' },
+  botoesContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
   botaoSalvar: {
     backgroundColor: '#10b981',
     borderRadius: 8,
     padding: 15,
     alignItems: 'center',
-    marginTop: 10,
+    flex: 1,
+    marginLeft: 10,
   },
   botaoSalvarTexto: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  botaoCancelar: {
+    backgroundColor: '#64748b',
+    borderRadius: 8,
+    padding: 15,
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+  },
+  botaoCancelarTexto: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   listaVales: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -380,6 +482,10 @@ const styles = StyleSheet.create({
   },
   valeNome: { fontSize: 16, fontWeight: 'bold', color: '#1e293b' },
   valeCargo: { fontSize: 12, color: '#64748b', marginTop: 2 },
+  valeAcoes: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   valeInfo: {
     flexDirection: 'row',
     marginTop: 10,
