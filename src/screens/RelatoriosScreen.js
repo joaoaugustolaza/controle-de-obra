@@ -253,38 +253,41 @@ export default function RelatoriosScreen() {
     try {
       const html = gerarHTMLRelatorio(relatorio);
 
-      // Criar um iframe oculto para gerar o PDF
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = '0';
-      iframe.style.visibility = 'hidden';
-      
-      document.body.appendChild(iframe);
-      
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-      iframeDoc.open();
-      iframeDoc.write(html);
-      iframeDoc.close();
+      // Criar um Blob com o conteúdo HTML
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
 
-      // Aguardar o conteúdo carregar
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Abrir em nova aba
+      const novaAba = window.open(url, '_blank');
 
-      // Focar no iframe e imprimir
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
+      if (novaAba) {
+        // Aguardar a aba carregar
+        novaAba.addEventListener('load', () => {
+          setTimeout(() => {
+            novaAba.focus();
+            novaAba.print();
+          }, 500);
+        });
 
-      // Remover o iframe após 2 segundos
-      setTimeout(() => {
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe);
-        }
-      }, 2000);
+        // Limpar o URL após 10 segundos
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 10000);
 
-      alert('Sucesso: PDF gerado! Na caixa de impressão, escolha "Salvar como PDF".');
+        alert('Sucesso: PDF gerado! Na caixa de impressão, escolha "Salvar como PDF".');
+      } else {
+        // Se o pop-up foi bloqueado, usar abordagem alternativa
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `relatorio-${relatorio.obra}-${Date.now()}.html`;
+        link.click();
+        
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 1000);
+
+        alert('Sucesso: Arquivo HTML baixado! Abra o arquivo e use Ctrl+P para imprimir como PDF.');
+      }
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
       alert('Erro: Não foi possível gerar o PDF - ' + error.message);
