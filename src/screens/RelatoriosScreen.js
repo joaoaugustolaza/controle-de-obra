@@ -253,31 +253,40 @@ export default function RelatoriosScreen() {
     try {
       const html = gerarHTMLRelatorio(relatorio);
 
-      if (Platform.OS === 'web') {
-        const novaJanela = window.open('', '_blank');
-        if (novaJanela) {
-          novaJanela.document.write(html);
-          novaJanela.document.close();
-          setTimeout(() => {
-            novaJanela.focus();
-            novaJanela.print();
-          }, 500);
-          alert('Sucesso: PDF gerado! Na caixa de impressão, escolha "Salvar como PDF".');
-        } else {
-          alert('Erro: Pop-up bloqueado. Permita pop-ups para este site e tente novamente.');
+      // Criar um iframe oculto para gerar o PDF
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.style.visibility = 'hidden';
+      
+      document.body.appendChild(iframe);
+      
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+      iframeDoc.open();
+      iframeDoc.write(html);
+      iframeDoc.close();
+
+      // Aguardar o conteúdo carregar
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Focar no iframe e imprimir
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+
+      // Remover o iframe após 2 segundos
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
         }
-      } else {
-        const { uri } = await Print.printToFileAsync({
-          html,
-          base64: false,
-        });
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Salvar Relatório PDF',
-        });
-        alert('Sucesso: PDF gerado e compartilhado!');
-      }
+      }, 2000);
+
+      alert('Sucesso: PDF gerado! Na caixa de impressão, escolha "Salvar como PDF".');
     } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
       alert('Erro: Não foi possível gerar o PDF - ' + error.message);
     } finally {
       setGerandoPdf(false);
