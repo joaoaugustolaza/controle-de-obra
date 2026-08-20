@@ -50,6 +50,13 @@ export default function RelatoriosScreen() {
     return `${dia}/${mes}/${ano}`;
   }
 
+  function formatarMoeda(valor) {
+    return valor.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
+  }
+
   async function carregarObras() {
     const { data } = await supabase
       .from('obras')
@@ -95,15 +102,15 @@ export default function RelatoriosScreen() {
 
   async function gerarRelatorio() {
     if (!obraSelecionada) {
-      Alert.alert('Atenção', 'Selecione uma obra');
+      alert('Atenção: Selecione uma obra');
       return;
     }
     if (!dataInicio || !dataFim) {
-      Alert.alert('Atenção', 'Selecione o período');
+      alert('Atenção: Selecione o período');
       return;
     }
     if (dataInicio > dataFim) {
-      Alert.alert('Atenção', 'A data inicial deve ser menor que a data final');
+      alert('Atenção: A data inicial deve ser menor que a data final');
       return;
     }
 
@@ -126,6 +133,16 @@ export default function RelatoriosScreen() {
       .gte('data', dataInicioStr)
       .lte('data', dataFimStr);
 
+    const { data: vales } = await supabase
+      .from('vales')
+      .select(`
+        *,
+        funcionarios:funcionario_id (nome, cargo)
+      `)
+      .eq('obra_id', obraSelecionada)
+      .gte('data', dataInicioStr)
+      .lte('data', dataFimStr);
+
     const { data: obra } = await supabase
       .from('obras')
       .select('nome')
@@ -139,6 +156,9 @@ export default function RelatoriosScreen() {
       totalDiasUteis: diasUteis.length,
       funcionarios: (funcionarios || []).map(func => {
         const registrosFunc = (pontos || []).filter(p => p.funcionario_id === func.id);
+        const valesFunc = (vales || []).filter(v => v.funcionario_id === func.id);
+        const totalVales = valesFunc.reduce((acc, v) => acc + v.valor, 0);
+        
         const dias = diasUteis.map(dia => {
           const dataStr = formatarDataISO(dia);
           const registroManha = registrosFunc.find(r => r.data === dataStr && r.periodo === 'Manhã');
@@ -155,9 +175,11 @@ export default function RelatoriosScreen() {
             ausente: !registroManha && !registroTarde,
           };
         });
+
         const diasCompletos = dias.filter(d => d.completo).length;
         const diasMeioPeriodo = dias.filter(d => d.meioPeriodo).length;
         const diasAusentes = dias.filter(d => d.ausente).length;
+
         return {
           nome: func.nome,
           cargo: func.cargo,
@@ -166,6 +188,8 @@ export default function RelatoriosScreen() {
           diasMeioPeriodo,
           diasAusentes,
           totalDias: dias.length,
+          vales: valesFunc,
+          totalVales
         };
       }),
     };
@@ -176,29 +200,24 @@ export default function RelatoriosScreen() {
 
   function confirmarLimpeza() {
     if (!obraSelecionada) {
-      Alert.alert('Atenção', 'Selecione uma obra');
+      alert('Atenção: Selecione uma obra');
       return;
     }
     if (!dataInicio || !dataFim) {
-      Alert.alert('Atenção', 'Selecione o período');
+      alert('Atenção: Selecione o período');
       return;
     }
 
     const obra = obras.find(o => o.id === obraSelecionada);
     const periodoTexto = `${formatarDataDisplay(dataInicio)} a ${formatarDataDisplay(dataFim)}`;
 
-    Alert.alert(
-      '⚠️ Confirmar Limpeza',
-      `ATENÇÃO: Esta ação irá APAGAR todos os registros de presença da obra "${obra?.nome}" no período de ${periodoTexto}.\n\nEsta ação NÃO pode ser desfeita.\n\nDeseja realmente continuar?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sim, Limpar Dados',
-          style: 'destructive',
-          onPress: () => limparDados(),
-        }
-      ]
+    const confirmar = window.confirm(
+      `ATENÇÃO: Esta ação irá APAGAR todos os registros de presença da obra "${obra?.nome}" no período de ${periodoTexto}.\n\nEsta ação NÃO pode ser desfeita.\n\nDeseja realmente continuar?`
     );
+
+    if (confirmar) {
+      limparDados();
+    }
   }
 
   async function limparDados() {
@@ -214,18 +233,18 @@ export default function RelatoriosScreen() {
       .lte('data', dataFimStr);
 
     if (error) {
-      Alert.alert('Erro', 'Não foi possível limpar os dados: ' + error.message);
+      alert('Erro: Não foi possível limpar os dados - ' + error.message);
     } else {
-      Alert.alert('Sucesso', 'Todos os registros de presença foram apagados!');
+      alert('Sucesso: Todos os registros de presença foram apagados!');
       setRelatorio(null);
     }
+
     setLimpando(false);
   }
 
-  // FUNÇÃO CORRIGIDA - GERA PDF COMPLETO NA WEB
   async function gerarPDF() {
     if (!relatorio) {
-      Alert.alert('Atenção', 'Gere o relatório primeiro');
+      alert('Atenção: Gere o relatório primeiro');
       return;
     }
 
@@ -234,26 +253,20 @@ export default function RelatoriosScreen() {
     try {
       const html = gerarHTMLRelatorio(relatorio);
 
-      // Verificar se está na web
       if (Platform.OS === 'web') {
-        // Na web: abrir em nova aba para imprimir/salvar como PDF
         const novaJanela = window.open('', '_blank');
         if (novaJanela) {
           novaJanela.document.write(html);
           novaJanela.document.close();
-          
-          // Aguardar carregar e abrir diálogo de impressão
           setTimeout(() => {
             novaJanela.focus();
             novaJanela.print();
           }, 500);
-          
-          Alert.alert('Sucesso', 'PDF gerado! Na caixa de impressão, escolha "Salvar como PDF".');
+          alert('Sucesso: PDF gerado! Na caixa de impressão, escolha "Salvar como PDF".');
         } else {
-          Alert.alert('Erro', 'Pop-up bloqueado. Permita pop-ups para este site e tente novamente.');
+          alert('Erro: Pop-up bloqueado. Permita pop-ups para este site e tente novamente.');
         }
       } else {
-        // No app nativo: usar expo-print
         const { uri } = await Print.printToFileAsync({
           html,
           base64: false,
@@ -262,10 +275,10 @@ export default function RelatoriosScreen() {
           mimeType: 'application/pdf',
           dialogTitle: 'Salvar Relatório PDF',
         });
-        Alert.alert('Sucesso', 'PDF gerado e compartilhado!');
+        alert('Sucesso: PDF gerado e compartilhado!');
       }
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível gerar o PDF: ' + error.message);
+      alert('Erro: Não foi possível gerar o PDF - ' + error.message);
     } finally {
       setGerandoPdf(false);
     }
@@ -394,6 +407,35 @@ export default function RelatoriosScreen() {
             font-weight: bold; 
             font-size: 14px; 
           }
+          .vales-box {
+            background: #fffbeb;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            border-left: 3px solid #f59e0b;
+          }
+          .vales-titulo {
+            font-weight: bold;
+            color: #92400e;
+            margin-bottom: 5px;
+            font-size: 12px;
+          }
+          .vales-total {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1e293b;
+          }
+          .vales-lista {
+            margin-top: 8px;
+            font-size: 10px;
+          }
+          .vales-lista table {
+            font-size: 9px;
+          }
+          .vales-lista th {
+            background: #f59e0b;
+            font-size: 8px;
+          }
           .legenda { 
             margin-top: 20px; 
             padding: 10px; 
@@ -475,7 +517,45 @@ export default function RelatoriosScreen() {
         html += `<td class="${classe}">${texto}</td>`;
       });
 
-      html += `</tr></tbody></table></div>`;
+      html += `</tr></tbody></table>`;
+
+      // Seção de Vales (simplificada)
+      html += `
+        <div class="vales-box">
+          <div class="vales-titulo">Total de Vales: <span class="vales-total">${formatarMoeda(func.totalVales)}</span></div>
+      `;
+
+      if (func.vales && func.vales.length > 0) {
+        html += `
+          <div class="vales-lista">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Valor</th>
+                  <th>Descrição</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+        func.vales.forEach(vale => {
+          const [ano, mes, dia] = vale.data.split('-');
+          html += `
+            <tr>
+              <td>${dia}/${mes}/${ano}</td>
+              <td>${formatarMoeda(vale.valor)}</td>
+              <td>${vale.descricao || '-'}</td>
+            </tr>
+          `;
+        });
+        html += `
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      html += `</div></div>`;
     });
 
     html += `
@@ -653,6 +733,28 @@ export default function RelatoriosScreen() {
                     </View>
                   ))}
                 </ScrollView>
+
+                {/* Seção de Vales (simplificada) */}
+                <View style={styles.valesBox}>
+                  <Text style={styles.valesTitulo}>
+                    Total de Vales: <Text style={styles.valesTotal}>{formatarMoeda(func.totalVales)}</Text>
+                  </Text>
+
+                  {func.vales && func.vales.length > 0 && (
+                    <View style={styles.valesLista}>
+                      {func.vales.map((vale, idx) => {
+                        const [ano, mes, dia] = vale.data.split('-');
+                        return (
+                          <View key={idx} style={styles.valeItem}>
+                            <Text style={styles.valeData}>{dia}/{mes}/{ano}</Text>
+                            <Text style={styles.valeValor}>{formatarMoeda(vale.valor)}</Text>
+                            <Text style={styles.valeDescricao}>{vale.descricao || '-'}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
               </View>
             ))}
 
@@ -823,6 +925,41 @@ const styles = StyleSheet.create({
   diaAusente: { backgroundColor: '#fee2e2' },
   diaStatusTexto: { fontSize: 12, fontWeight: 'bold', color: '#64748b' },
   diaStatusTextoClaro: { color: '#fff' },
+  valesBox: {
+    marginTop: 15,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    backgroundColor: '#fffbeb',
+    padding: 10,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#f59e0b',
+  },
+  valesTitulo: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#92400e',
+    marginBottom: 8,
+  },
+  valesTotal: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1e293b',
+  },
+  valesLista: {
+    marginTop: 8,
+  },
+  valeItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#fde68a',
+  },
+  valeData: { fontSize: 11, color: '#64748b', flex: 1 },
+  valeValor: { fontSize: 11, fontWeight: 'bold', color: '#1e293b', flex: 1, textAlign: 'center' },
+  valeDescricao: { fontSize: 11, color: '#64748b', flex: 2, textAlign: 'right' },
   legenda: {
     marginTop: 20,
     paddingTop: 15,
