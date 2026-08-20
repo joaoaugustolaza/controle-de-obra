@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -12,7 +12,6 @@ export default function RelatoriosScreen() {
   const [carregando, setCarregando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
   const [limpando, setLimpando] = useState(false);
-  
   const [dataInicio, setDataInicio] = useState(null);
   const [dataFim, setDataFim] = useState(null);
 
@@ -26,18 +25,14 @@ export default function RelatoriosScreen() {
   function calcularQuinzena() {
     const hoje = new Date();
     hoje.setHours(12, 0, 0, 0);
-    
     const diaSemana = hoje.getDay();
     const diasDesdeSegunda = diaSemana === 0 ? 6 : diaSemana - 1;
     const segundaSemanaAtual = new Date(hoje);
     segundaSemanaAtual.setDate(hoje.getDate() - diasDesdeSegunda);
-    
     const inicioQuinzena = new Date(segundaSemanaAtual);
     inicioQuinzena.setDate(segundaSemanaAtual.getDate() - 7);
-    
     const fimQuinzena = new Date(segundaSemanaAtual);
     fimQuinzena.setDate(segundaSemanaAtual.getDate() + 4);
-    
     return { inicio: inicioQuinzena, fim: fimQuinzena };
   }
 
@@ -61,7 +56,6 @@ export default function RelatoriosScreen() {
       .select('*')
       .eq('status', 'Ativa')
       .order('nome');
-
     setObras(data || []);
   }
 
@@ -89,7 +83,6 @@ export default function RelatoriosScreen() {
     atual.setHours(12, 0, 0, 0);
     const fimDate = new Date(fim);
     fimDate.setHours(12, 0, 0, 0);
-
     while (atual <= fimDate) {
       const diaSemana = atual.getDay();
       if (diaSemana !== 0 && diaSemana !== 6) {
@@ -105,12 +98,10 @@ export default function RelatoriosScreen() {
       Alert.alert('Atenção', 'Selecione uma obra');
       return;
     }
-
     if (!dataInicio || !dataFim) {
       Alert.alert('Atenção', 'Selecione o período');
       return;
     }
-
     if (dataInicio > dataFim) {
       Alert.alert('Atenção', 'A data inicial deve ser menor que a data final');
       return;
@@ -148,12 +139,10 @@ export default function RelatoriosScreen() {
       totalDiasUteis: diasUteis.length,
       funcionarios: (funcionarios || []).map(func => {
         const registrosFunc = (pontos || []).filter(p => p.funcionario_id === func.id);
-        
         const dias = diasUteis.map(dia => {
           const dataStr = formatarDataISO(dia);
           const registroManha = registrosFunc.find(r => r.data === dataStr && r.periodo === 'Manhã');
           const registroTarde = registrosFunc.find(r => r.data === dataStr && r.periodo === 'Tarde');
-          
           return {
             data: dataStr,
             diaSemana: dia.toLocaleDateString('pt-BR', { weekday: 'short' }),
@@ -166,11 +155,9 @@ export default function RelatoriosScreen() {
             ausente: !registroManha && !registroTarde,
           };
         });
-
         const diasCompletos = dias.filter(d => d.completo).length;
         const diasMeioPeriodo = dias.filter(d => d.meioPeriodo).length;
         const diasAusentes = dias.filter(d => d.ausente).length;
-
         return {
           nome: func.nome,
           cargo: func.cargo,
@@ -192,7 +179,6 @@ export default function RelatoriosScreen() {
       Alert.alert('Atenção', 'Selecione uma obra');
       return;
     }
-
     if (!dataInicio || !dataFim) {
       Alert.alert('Atenção', 'Selecione o período');
       return;
@@ -217,7 +203,6 @@ export default function RelatoriosScreen() {
 
   async function limparDados() {
     setLimpando(true);
-
     const dataInicioStr = formatarDataISO(dataInicio);
     const dataFimStr = formatarDataISO(dataFim);
 
@@ -234,10 +219,10 @@ export default function RelatoriosScreen() {
       Alert.alert('Sucesso', 'Todos os registros de presença foram apagados!');
       setRelatorio(null);
     }
-
     setLimpando(false);
   }
 
+  // FUNÇÃO CORRIGIDA - GERA PDF COMPLETO NA WEB
   async function gerarPDF() {
     if (!relatorio) {
       Alert.alert('Atenção', 'Gere o relatório primeiro');
@@ -248,18 +233,37 @@ export default function RelatoriosScreen() {
 
     try {
       const html = gerarHTMLRelatorio(relatorio);
-      
-      const { uri } = await Print.printToFileAsync({
-        html,
-        base64: false,
-      });
 
-      await Sharing.shareAsync(uri, {
-        mimeType: 'application/pdf',
-        dialogTitle: 'Salvar Relatório PDF',
-      });
-
-      Alert.alert('Sucesso', 'PDF gerado e compartilhado!');
+      // Verificar se está na web
+      if (Platform.OS === 'web') {
+        // Na web: abrir em nova aba para imprimir/salvar como PDF
+        const novaJanela = window.open('', '_blank');
+        if (novaJanela) {
+          novaJanela.document.write(html);
+          novaJanela.document.close();
+          
+          // Aguardar carregar e abrir diálogo de impressão
+          setTimeout(() => {
+            novaJanela.focus();
+            novaJanela.print();
+          }, 500);
+          
+          Alert.alert('Sucesso', 'PDF gerado! Na caixa de impressão, escolha "Salvar como PDF".');
+        } else {
+          Alert.alert('Erro', 'Pop-up bloqueado. Permita pop-ups para este site e tente novamente.');
+        }
+      } else {
+        // No app nativo: usar expo-print
+        const { uri } = await Print.printToFileAsync({
+          html,
+          base64: false,
+        });
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Salvar Relatório PDF',
+        });
+        Alert.alert('Sucesso', 'PDF gerado e compartilhado!');
+      }
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível gerar o PDF: ' + error.message);
     } finally {
@@ -277,29 +281,155 @@ export default function RelatoriosScreen() {
         <meta charset="UTF-8">
         <title>Relatório - ${rel.obra}</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 20px; color: #1e293b; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #8b5cf6; padding-bottom: 15px; }
-          .header h1 { color: #8b5cf6; margin: 0; font-size: 28px; }
-          .header p { margin: 5px 0; color: #64748b; font-size: 14px; }
-          .info-box { background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #8b5cf6; }
-          .funcionario { margin-bottom: 30px; page-break-inside: avoid; }
-          .funcionario-header { background: #8b5cf6; color: white; padding: 10px 15px; border-radius: 8px 8px 0 0; font-size: 18px; font-weight: bold; }
-          .funcionario-cargo { font-size: 12px; font-weight: normal; opacity: 0.9; }
-          .resumo { display: flex; justify-content: space-around; background: #f1f5f9; padding: 15px; border-radius: 0 0 8px 8px; margin-bottom: 15px; }
-          .resumo-item { text-align: center; }
-          .resumo-valor { font-size: 24px; font-weight: bold; color: #8b5cf6; }
-          .resumo-label { font-size: 11px; color: #64748b; margin-top: 3px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-          th { background: #8b5cf6; color: white; padding: 8px 5px; text-align: center; font-weight: bold; }
-          td { border: 1px solid #e2e8f0; padding: 8px 5px; text-align: center; }
-          .dia-completo { background: #10b981; color: white; font-weight: bold; font-size: 16px; }
-          .dia-meio { background: #f59e0b; color: white; font-weight: bold; font-size: 14px; }
-          .dia-ausente { background: #fee2e2; color: #dc2626; font-weight: bold; font-size: 16px; }
-          .legenda { margin-top: 30px; padding: 15px; background: #f8fafc; border-radius: 8px; font-size: 12px; }
-          .legenda h3 { margin: 0 0 10px 0; color: #1e293b; }
-          .legenda-item { display: flex; align-items: center; margin: 5px 0; }
-          .legenda-cor { width: 20px; height: 20px; border-radius: 10px; margin-right: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-          .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; }
+          @page {
+            size: A4 landscape;
+            margin: 15mm;
+          }
+          @media print {
+            body { margin: 0; }
+            .funcionario { page-break-inside: avoid; }
+          }
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 15px; 
+            color: #1e293b; 
+            font-size: 11px;
+          }
+          .header { 
+            text-align: center; 
+            margin-bottom: 20px; 
+            border-bottom: 3px solid #8b5cf6; 
+            padding-bottom: 10px; 
+          }
+          .header h1 { 
+            color: #8b5cf6; 
+            margin: 0; 
+            font-size: 24px; 
+          }
+          .header p { 
+            margin: 3px 0; 
+            color: #64748b; 
+            font-size: 12px; 
+          }
+          .info-box { 
+            background: #f8fafc; 
+            padding: 10px; 
+            border-radius: 6px; 
+            margin-bottom: 15px; 
+            border-left: 3px solid #8b5cf6; 
+            font-size: 11px;
+          }
+          .funcionario { 
+            margin-bottom: 20px; 
+            page-break-inside: avoid; 
+          }
+          .funcionario-header { 
+            background: #8b5cf6; 
+            color: white; 
+            padding: 8px 12px; 
+            border-radius: 6px 6px 0 0; 
+            font-size: 14px; 
+            font-weight: bold; 
+          }
+          .funcionario-cargo { 
+            font-size: 11px; 
+            font-weight: normal; 
+            opacity: 0.9; 
+          }
+          .resumo { 
+            display: flex; 
+            justify-content: space-around; 
+            background: #f1f5f9; 
+            padding: 10px; 
+            border-radius: 0 0 6px 6px; 
+            margin-bottom: 10px; 
+          }
+          .resumo-item { 
+            text-align: center; 
+          }
+          .resumo-valor { 
+            font-size: 20px; 
+            font-weight: bold; 
+            color: #8b5cf6; 
+          }
+          .resumo-label { 
+            font-size: 10px; 
+            color: #64748b; 
+            margin-top: 2px; 
+          }
+          table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 8px; 
+            font-size: 10px; 
+          }
+          th { 
+            background: #8b5cf6; 
+            color: white; 
+            padding: 6px 3px; 
+            text-align: center; 
+            font-weight: bold; 
+            font-size: 9px;
+          }
+          td { 
+            border: 1px solid #e2e8f0; 
+            padding: 6px 3px; 
+            text-align: center; 
+          }
+          .dia-completo { 
+            background: #10b981; 
+            color: white; 
+            font-weight: bold; 
+            font-size: 14px; 
+          }
+          .dia-meio { 
+            background: #f59e0b; 
+            color: white; 
+            font-weight: bold; 
+            font-size: 12px; 
+          }
+          .dia-ausente { 
+            background: #fee2e2; 
+            color: #dc2626; 
+            font-weight: bold; 
+            font-size: 14px; 
+          }
+          .legenda { 
+            margin-top: 20px; 
+            padding: 10px; 
+            background: #f8fafc; 
+            border-radius: 6px; 
+            font-size: 10px; 
+          }
+          .legenda h3 { 
+            margin: 0 0 8px 0; 
+            color: #1e293b; 
+            font-size: 12px;
+          }
+          .legenda-item { 
+            display: flex; 
+            align-items: center; 
+            margin: 4px 0; 
+          }
+          .legenda-cor { 
+            width: 18px; 
+            height: 18px; 
+            border-radius: 9px; 
+            margin-right: 8px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: bold; 
+            font-size: 10px;
+          }
+          .footer { 
+            margin-top: 30px; 
+            text-align: center; 
+            font-size: 9px; 
+            color: #94a3b8; 
+            border-top: 1px solid #e2e8f0; 
+            padding-top: 10px; 
+          }
         </style>
       </head>
       <body>
