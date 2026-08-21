@@ -24,6 +24,7 @@ export default function ObrasScreen() {
   const [presencas, setPresencas] = useState({});
   const [dataHoje, setDataHoje] = useState(new Date().toISOString().split('T')[0]);
   const [refreshing, setRefreshing] = useState(false);
+  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
     carregarObras();
@@ -44,7 +45,6 @@ export default function ObrasScreen() {
   }, [obraSelecionada, mostrarPresenca, dataHoje]);
 
   async function carregarObras() {
-    // Buscar diretamente do Supabase para garantir dados atualizados
     const { data, error } = await supabase
       .from('obras')
       .select('*')
@@ -52,12 +52,10 @@ export default function ObrasScreen() {
 
     if (error) {
       console.error('Erro ao carregar obras:', error);
-      // Fallback para cache local se houver erro
       const data = await syncManager.getData('obras');
       setObras(data || []);
     } else {
       setObras(data || []);
-      // Atualizar cache local
       await syncManager.saveData('obras', data || []);
     }
   }
@@ -156,6 +154,7 @@ export default function ObrasScreen() {
   }
 
   function iniciarEdicao(obra) {
+    console.log('Iniciando edição da obra:', obra);
     setEditando(obra);
     setNome(obra.nome);
     setEndereco(obra.endereco || '');
@@ -201,43 +200,66 @@ export default function ObrasScreen() {
       return;
     }
 
+    setSalvando(true);
+
     const obraData = {
       nome: nome.trim(),
-      endereco: endereco.trim(),
-      responsavel: responsavel.trim(),
+      endereco: endereco.trim() || null,
+      responsavel: responsavel.trim() || null,
       data_inicio: dataInicio,
       status: status,
       latitude: latitude,
       longitude: longitude
     };
 
+    console.log('Dados da obra:', obraData);
+    console.log('Editando:', editando);
+
     if (editando) {
-      const { error } = await supabase
+      console.log('Atualizando obra ID:', editando.id);
+      
+      const { data, error } = await supabase
         .from('obras')
         .update(obraData)
-        .eq('id', editando.id);
+        .eq('id', editando.id)
+        .select();
+
+      console.log('Resultado da atualização:', { data, error });
 
       if (error) {
-        Alert.alert('Erro', error.message);
+        console.error('Erro ao atualizar obra:', error);
+        alert('Erro: Não foi possível atualizar a obra - ' + error.message);
+        setSalvando(false);
       } else {
+        console.log('Obra atualizada com sucesso:', data);
         alert('Sucesso: Obra atualizada!');
         limparFormulario();
-        carregarObras();
+        await carregarObras();
+        setSalvando(false);
       }
     } else {
-      const { error } = await supabase
+      console.log('Criando nova obra');
+      
+      const { data, error } = await supabase
         .from('obras')
         .insert([{
           ...obraData,
           created_at: new Date().toISOString()
-        }]);
+        }])
+        .select();
+
+      console.log('Resultado da criação:', { data, error });
 
       if (error) {
-        Alert.alert('Erro', error.message);
+        console.error('Erro ao criar obra:', error);
+        alert('Erro: Não foi possível criar a obra - ' + error.message);
+        setSalvando(false);
       } else {
+        console.log('Obra criada com sucesso:', data);
         alert('Sucesso: Obra cadastrada!');
         limparFormulario();
-        carregarObras();
+        await carregarObras();
+        setSalvando(false);
       }
     }
   }
@@ -252,10 +274,10 @@ export default function ObrasScreen() {
       .eq('id', id);
 
     if (error) {
-      Alert.alert('Erro', error.message);
+      alert('Erro: Não foi possível excluir - ' + error.message);
     } else {
       alert('Sucesso: Obra excluída!');
-      carregarObras();
+      await carregarObras();
     }
   }
 
@@ -430,11 +452,12 @@ export default function ObrasScreen() {
               </View>
 
               <TouchableOpacity 
-                style={styles.botaoSalvar}
+                style={[styles.botaoSalvar, salvando && styles.botaoDesabilitado]}
                 onPress={salvarObra}
+                disabled={salvando}
               >
                 <Text style={styles.botaoSalvarTexto}>
-                  {editando ? 'Atualizar Obra' : 'Salvar Obra'}
+                  {salvando ? 'Salvando...' : (editando ? 'Atualizar Obra' : 'Salvar Obra')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -521,7 +544,6 @@ export default function ObrasScreen() {
         </View>
       </ScrollView>
 
-      {/* Modal Fullscreen de Marcação de Presença */}
       <Modal
         visible={mostrarPresenca}
         animationType="slide"
@@ -750,6 +772,9 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: 'center',
     marginTop: 10,
+  },
+  botaoDesabilitado: {
+    backgroundColor: '#94a3b8',
   },
   botaoSalvarTexto: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   listaObras: {
