@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Linking, Platform, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { syncManager } from '../services/syncManager';
+import { supabase } from '../services/supabase';
 
 export default function ObrasScreen() {
   const [obras, setObras] = useState([]);
@@ -17,6 +18,11 @@ export default function ObrasScreen() {
   const [longitude, setLongitude] = useState(null);
   const [isOnline, setIsOnline] = useState(syncManager.getStatus().isOnline);
   const [capturandoLocalizacao, setCapturandoLocalizacao] = useState(false);
+  const [obraSelecionada, setObraSelecionada] = useState(null);
+  const [mostrarPresenca, setMostrarPresenca] = useState(false);
+  const [funcionarios, setFuncionarios] = useState([]);
+  const [presencas, setPresencas] = useState({});
+  const [dataHoje, setDataHoje] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     carregarObras();
@@ -29,9 +35,97 @@ export default function ObrasScreen() {
     return () => {};
   }, []);
 
+  useEffect(() => {
+    if (obraSelecionada && mostrarPresenca) {
+      carregarFuncionariosObra();
+      carregarPresencas();
+    }
+  }, [obraSelecionada, mostrarPresenca, dataHoje]);
+
   async function carregarObras() {
     const data = await syncManager.getData('obras');
     setObras(data || []);
+  }
+
+  async function carregarFuncionariosObra() {
+    if (!obraSelecionada) return;
+
+    const { data, error } = await supabase
+      .from('funcionarios')
+      .select('*')
+      .eq('obra_id', obraSelecionada.id)
+      .order('nome');
+
+    if (error) {
+      console.error('Erro ao carregar funcionários:', error);
+    } else {
+      setFuncionarios(data || []);
+    }
+  }
+
+  async function carregarPresencas() {
+    if (!obraSelecionada) return;
+
+    const { data, error } = await supabase
+      .from('pontos')
+      .select('*')
+      .eq('obra_id', obraSelecionada.id)
+      .eq('data', dataHoje);
+
+    if (error) {
+      console.error('Erro ao carregar presenças:', error);
+    } else {
+      const presencasMap = {};
+      (data || []).forEach(ponto => {
+        const key = `${ponto.funcionario_id}_${ponto.periodo}`;
+        presencasMap[key] = true;
+      });
+      setPresencas(presencasMap);
+    }
+  }
+
+  async function marcarPresenca(funcionarioId, periodo) {
+    const key = `${funcionarioId}_${periodo}`;
+    const jaMarcado = presencas[key];
+
+    if (jaMarcado) {
+      const { error } = await supabase
+        .from('pontos')
+        .delete()
+        .eq('funcionario_id', funcionarioId)
+        .eq('obra_id', obraSelecionada.id)
+        .eq('data', dataHoje)
+        .eq('periodo', periodo);
+
+      if (error) {
+        Alert.alert('Erro', error.message);
+      } else {
+        const novasPresencas = { ...presencas };
+        delete novasPresencas[key];
+        setPresencas(novasPresencas);
+      }
+    } else {
+      const { error } = await supabase
+        .from('pontos')
+        .insert([{
+          funcionario_id: funcionarioId,
+          obra_id: obraSelecionada.id,
+          data: dataHoje,
+          periodo: periodo
+        }]);
+
+      if (error) {
+        Alert.alert('Erro', error.message);
+      } else {
+        const novasPresencas = { ...presencas, [key]: true };
+        setPresencas(novasPresencas);
+      }
+    }
+  }
+
+  function abrirMarcacaoPresenca(obra) {
+    setObraSelecionada(obra);
+    setMostrarPresenca(true);
   }
 
   function limparFormulario() {
@@ -150,14 +244,15 @@ export default function ObrasScreen() {
     Linking.openURL(url);
   }
 
-  function abrirDirecoes(obra) {
-    if (!obra.latitude || !obra.longitude) {
-      alert('Atenção: Esta obra não tem localização registrada');
-      return;
-    }
+  function mudarData(dias) {
+    const novaData = new Date(dataHoje);
+    novaData.setDate(novaData.getDate() + dias);
+    setDataHoje(novaData.toISOString().split('T')[0]);
+  }
 
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${obra.latitude},${obra.longitude}`;
-    Linking.openURL(url);
+  function formatarData(data) {
+    const [ano, mes, dia] = data.split('-');
+    return `${dia}/${mes}/${ano}`;
   }
 
   return (
@@ -318,7 +413,11 @@ export default function ObrasScreen() {
             </View>
           ) : (
             obras.map((obra) => (
-              <View key={obra.id} style={styles.obraCard}>
+              <TouchableOpacity
+                key={obra.id}
+                style={styles.obraCard}
+                onPress={() => abrirMarcacaoPresenca(obra)}
+              >
                 <View style={styles.obraHeader}>
                   <Text style={styles.obraNome}>{obra.nome}</Text>
                   <View style={[
@@ -378,11 +477,125 @@ export default function ObrasScreen() {
                     <Text style={styles.botaoExcluirTexto}>Excluir</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </View>
       </View>
+
+      {/* Modal de Marcação de Presença */}
+      <Modal
+        visible={mostrarPresenca}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setMostrarPresenca(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderInfo}>
+                <Text style={styles.modalTitulo}>Marcar Presença</Text>
+                <Text style={styles.modalSubtitulo}>{obraSelecionada?.nome}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setMostrarPresenca(false)}>
+                <Ionicons name="close" size={28} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.dataContainer}>
+              <TouchableOpacity onPress={() => mudarData(-1)} style={styles.botaoData}>
+                <Ionicons name="chevron-back" size={24} color="#2563eb" />
+              </TouchableOpacity>
+              <Text style={styles.dataTexto}>{formatarData(dataHoje)}</Text>
+              <TouchableOpacity onPress={() => mudarData(1)} style={styles.botaoData}>
+                <Ionicons name="chevron-forward" size={24} color="#2563eb" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody}>
+              {funcionarios.length === 0 ? (
+                <View style={styles.vazioModal}>
+                  <Ionicons name="people-outline" size={48} color="#cbd5e1" />
+                  <Text style={styles.vazioModalTexto}>Nenhum funcionário nesta obra</Text>
+                </View>
+              ) : (
+                funcionarios.map((func) => {
+                  const manhaKey = `${func.id}_Manhã`;
+                  const tardeKey = `${func.id}_Tarde`;
+                  const manhaMarcado = presencas[manhaKey];
+                  const tardeMarcado = presencas[tardeKey];
+
+                  return (
+                    <View key={func.id} style={styles.funcionarioCard}>
+                      <View style={styles.funcionarioHeader}>
+                        <Ionicons name="person" size={24} color="#2563eb" />
+                        <View style={styles.funcionarioInfo}>
+                          <Text style={styles.funcionarioNome}>{func.nome}</Text>
+                          {func.cargo && <Text style={styles.funcionarioCargo}>{func.cargo}</Text>}
+                        </View>
+                      </View>
+
+                      <View style={styles.botoesContainer}>
+                        <TouchableOpacity
+                          style={[
+                            styles.botaoPeriodo,
+                            manhaMarcado && styles.botaoMarcado
+                          ]}
+                          onPress={() => marcarPresenca(func.id, 'Manhã')}
+                        >
+                          <Ionicons
+                            name={manhaMarcado ? 'checkmark-circle' : 'sunny'}
+                            size={20}
+                            color={manhaMarcado ? '#fff' : '#f59e0b'}
+                          />
+                          <Text style={[
+                            styles.botaoPeriodoTexto,
+                            manhaMarcado && styles.botaoPeriodoTextoMarcado
+                          ]}>
+                            {manhaMarcado ? 'Manhã ✓' : 'Manhã'}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[
+                            styles.botaoPeriodo,
+                            tardeMarcado && styles.botaoMarcado
+                          ]}
+                          onPress={() => marcarPresenca(func.id, 'Tarde')}
+                        >
+                          <Ionicons
+                            name={tardeMarcado ? 'checkmark-circle' : 'cloudy'}
+                            size={20}
+                            color={tardeMarcado ? '#fff' : '#64748b'}
+                          />
+                          <Text style={[
+                            styles.botaoPeriodoTexto,
+                            tardeMarcado && styles.botaoPeriodoTextoMarcado
+                          ]}>
+                            {tardeMarcado ? 'Tarde ✓' : 'Tarde'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <View style={styles.statusContainer}>
+                        {manhaMarcado && tardeMarcado && (
+                          <Text style={styles.statusCompleto}>✓ Dia Completo</Text>
+                        )}
+                        {(manhaMarcado || tardeMarcado) && !(manhaMarcado && tardeMarcado) && (
+                          <Text style={styles.statusParcial}>½ Meio Período</Text>
+                        )}
+                        {!manhaMarcado && !tardeMarcado && (
+                          <Text style={styles.statusAusente}>○ Ausente</Text>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -565,4 +778,93 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   botaoExcluirTexto: { color: '#ef4444', fontSize: 12, fontWeight: 'bold', marginLeft: 5 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  modalHeaderInfo: { flex: 1 },
+  modalTitulo: { fontSize: 20, fontWeight: 'bold', color: '#1e293b' },
+  modalSubtitulo: { fontSize: 14, color: '#64748b', marginTop: 2 },
+  dataContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8fafc',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  botaoData: { padding: 10 },
+  dataTexto: { fontSize: 18, fontWeight: 'bold', color: '#1e293b', marginHorizontal: 20 },
+  modalBody: {
+    padding: 20,
+    maxHeight: 400,
+  },
+  vazioModal: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  vazioModalTexto: { fontSize: 14, color: '#94a3b8', marginTop: 10 },
+  funcionarioCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 15,
+    borderLeftWidth: 3,
+    borderLeftColor: '#2563eb',
+  },
+  funcionarioHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+  funcionarioInfo: { marginLeft: 10, flex: 1 },
+  funcionarioNome: { fontSize: 16, fontWeight: 'bold', color: '#1e293b' },
+  funcionarioCargo: { fontSize: 12, color: '#64748b', marginTop: 2 },
+  botoesContainer: { flexDirection: 'row', gap: 10 },
+  botaoPeriodo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+  },
+  botaoMarcado: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
+  },
+  botaoPeriodoTexto: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#64748b',
+    marginLeft: 8,
+  },
+  botaoPeriodoTextoMarcado: {
+    color: '#fff',
+  },
+  statusContainer: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    alignItems: 'center',
+  },
+  statusCompleto: { color: '#10b981', fontSize: 12, fontWeight: 'bold' },
+  statusParcial: { color: '#f59e0b', fontSize: 12, fontWeight: 'bold' },
+  statusAusente: { color: '#ef4444', fontSize: 12, fontWeight: 'bold' },
 });
