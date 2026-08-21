@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Linking, Platform, Modal, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Linking, Platform, Modal, SafeAreaView, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { syncManager } from '../services/syncManager';
@@ -23,6 +23,7 @@ export default function ObrasScreen() {
   const [funcionarios, setFuncionarios] = useState([]);
   const [presencas, setPresencas] = useState({});
   const [dataHoje, setDataHoje] = useState(new Date().toISOString().split('T')[0]);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     carregarObras();
@@ -43,8 +44,22 @@ export default function ObrasScreen() {
   }, [obraSelecionada, mostrarPresenca, dataHoje]);
 
   async function carregarObras() {
-    const data = await syncManager.getData('obras');
-    setObras(data || []);
+    // Buscar diretamente do Supabase para garantir dados atualizados
+    const { data, error } = await supabase
+      .from('obras')
+      .select('*')
+      .order('nome');
+
+    if (error) {
+      console.error('Erro ao carregar obras:', error);
+      // Fallback para cache local se houver erro
+      const data = await syncManager.getData('obras');
+      setObras(data || []);
+    } else {
+      setObras(data || []);
+      // Atualizar cache local
+      await syncManager.saveData('obras', data || []);
+    }
   }
 
   async function carregarFuncionariosObra() {
@@ -197,24 +212,29 @@ export default function ObrasScreen() {
     };
 
     if (editando) {
-      const result = await syncManager.saveData('obras', {
-        ...editando,
-        ...obraData
-      });
-      
-      if (result.success) {
+      const { error } = await supabase
+        .from('obras')
+        .update(obraData)
+        .eq('id', editando.id);
+
+      if (error) {
+        Alert.alert('Erro', error.message);
+      } else {
         alert('Sucesso: Obra atualizada!');
         limparFormulario();
         carregarObras();
       }
     } else {
-      const result = await syncManager.saveData('obras', {
-        ...obraData,
-        id: Date.now().toString(),
-        created_at: new Date().toISOString()
-      });
-      
-      if (result.success) {
+      const { error } = await supabase
+        .from('obras')
+        .insert([{
+          ...obraData,
+          created_at: new Date().toISOString()
+        }]);
+
+      if (error) {
+        Alert.alert('Erro', error.message);
+      } else {
         alert('Sucesso: Obra cadastrada!');
         limparFormulario();
         carregarObras();
@@ -226,9 +246,14 @@ export default function ObrasScreen() {
     const confirmar = window.confirm('Deseja realmente excluir esta obra?');
     if (!confirmar) return;
 
-    const result = await syncManager.deleteData('obras', id);
-    
-    if (result.success) {
+    const { error } = await supabase
+      .from('obras')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      Alert.alert('Erro', error.message);
+    } else {
       alert('Sucesso: Obra excluída!');
       carregarObras();
     }
@@ -255,9 +280,20 @@ export default function ObrasScreen() {
     return `${dia}/${mes}/${ano}`;
   }
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await carregarObras();
+    setRefreshing(false);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <Text style={styles.headerTitulo}>Obras</Text>
