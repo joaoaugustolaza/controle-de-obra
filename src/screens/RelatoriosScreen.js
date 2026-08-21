@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../services/supabase';
 
 export default function RelatoriosScreen() {
@@ -16,11 +17,16 @@ export default function RelatoriosScreen() {
   const [dataFim, setDataFim] = useState(null);
 
   useEffect(() => {
-    carregarObras();
     const quinzena = calcularQuinzena();
     setDataInicio(quinzena.inicio);
     setDataFim(quinzena.fim);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      carregarObras();
+    }, [])
+  );
 
   function calcularQuinzena() {
     const hoje = new Date();
@@ -115,7 +121,6 @@ export default function RelatoriosScreen() {
     }
 
     setCarregando(true);
-
     const diasUteis = gerarDiasUteis(dataInicio, dataFim);
     const dataInicioStr = formatarDataISO(dataInicio);
     const dataFimStr = formatarDataISO(dataFim);
@@ -158,7 +163,7 @@ export default function RelatoriosScreen() {
         const registrosFunc = (pontos || []).filter(p => p.funcionario_id === func.id);
         const valesFunc = (vales || []).filter(v => v.funcionario_id === func.id);
         const totalVales = valesFunc.reduce((acc, v) => acc + v.valor, 0);
-        
+
         const dias = diasUteis.map(dia => {
           const dataStr = formatarDataISO(dia);
           const registroManha = registrosFunc.find(r => r.data === dataStr && r.periodo === 'Manhã');
@@ -252,12 +257,10 @@ export default function RelatoriosScreen() {
 
     try {
       const html = gerarHTMLRelatorio(relatorio);
-
-      // Detectar se é dispositivo móvel
+      
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
+      
       if (isMobile) {
-        // Em dispositivos móveis: baixar o arquivo HTML diretamente
         const blob = new Blob([html], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -266,18 +269,15 @@ export default function RelatoriosScreen() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-
         setTimeout(() => {
           URL.revokeObjectURL(url);
         }, 1000);
-
         alert('Sucesso: Arquivo HTML baixado! Abra o arquivo no navegador e use a opção de imprimir para salvar como PDF.');
       } else {
-        // Em desktop: tentar abrir em nova aba
         const blob = new Blob([html], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const novaAba = window.open(url, '_blank');
-
+        
         if (novaAba) {
           novaAba.addEventListener('load', () => {
             setTimeout(() => {
@@ -285,23 +285,18 @@ export default function RelatoriosScreen() {
               novaAba.print();
             }, 500);
           });
-
           setTimeout(() => {
             URL.revokeObjectURL(url);
           }, 10000);
-
           alert('Sucesso: PDF gerado! Na caixa de impressão, escolha "Salvar como PDF".');
         } else {
-          // Fallback se pop-up for bloqueado
           const link = document.createElement('a');
           link.href = url;
           link.download = `relatorio-${relatorio.obra.replace(/\s+/g, '-')}-${Date.now()}.html`;
           link.click();
-
           setTimeout(() => {
             URL.revokeObjectURL(url);
           }, 1000);
-
           alert('Sucesso: Arquivo HTML baixado! Abra o arquivo e use Ctrl+P para imprimir como PDF.');
         }
       }
@@ -548,7 +543,6 @@ export default function RelatoriosScreen() {
 
       html += `</tr></tbody></table>`;
 
-      // Seção de Vales (simplificada)
       html += `
         <div class="vales-box">
           <div class="vales-titulo">Total de Vales: <span class="vales-total">${formatarMoeda(func.totalVales)}</span></div>
@@ -567,6 +561,7 @@ export default function RelatoriosScreen() {
               </thead>
               <tbody>
         `;
+
         func.vales.forEach(vale => {
           const [ano, mes, dia] = vale.data.split('-');
           html += `
@@ -577,6 +572,7 @@ export default function RelatoriosScreen() {
             </tr>
           `;
         });
+
         html += `
               </tbody>
             </table>
@@ -763,7 +759,6 @@ export default function RelatoriosScreen() {
                   ))}
                 </ScrollView>
 
-                {/* Seção de Vales (simplificada) */}
                 <View style={styles.valesBox}>
                   <Text style={styles.valesTitulo}>
                     Total de Vales: <Text style={styles.valesTotal}>{formatarMoeda(func.totalVales)}</Text>

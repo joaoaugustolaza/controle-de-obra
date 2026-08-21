@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../services/supabase';
 
 export default function ValesScreen() {
@@ -17,9 +18,11 @@ export default function ValesScreen() {
   const [editando, setEditando] = useState(null);
   const [valeEditando, setValeEditando] = useState(null);
 
-  useEffect(() => {
-    carregarObras();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      carregarObras();
+    }, [])
+  );
 
   useEffect(() => {
     if (obraSelecionada) {
@@ -170,7 +173,6 @@ export default function ValesScreen() {
 
   async function excluirVale(id) {
     const confirmar = window.confirm('Deseja realmente excluir este vale?');
-    
     if (!confirmar) {
       return;
     }
@@ -291,6 +293,7 @@ export default function ValesScreen() {
                     >
                       <Text style={styles.botaoCancelarTexto}>Cancelar</Text>
                     </TouchableOpacity>
+
                     <TouchableOpacity 
                       style={styles.botaoAtualizar}
                       onPress={atualizarVale}
