@@ -67,11 +67,7 @@ export default function ObrasScreen({ navigation }) {
   }
 
   function abrirListaFuncionarios(obra) {
-    if (navigation && navigation.navigate) {
-      navigation.navigate('Ponto', { obraId: obra.id, obraNome: obra.nome });
-    } else {
-      alert('Navegação não disponível. Use a aba "Ponto" no menu inferior.');
-    }
+    navigation.navigate('Funcionários', { obraId: obra.id, obraNome: obra.nome });
   }
 
   async function capturarLocalizacaoAtual() {
