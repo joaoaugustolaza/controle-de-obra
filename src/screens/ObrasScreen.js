@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Linking, Platform, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { syncManager } from '../services/syncManager';
 
@@ -155,7 +156,12 @@ export default function ObrasScreen() {
       return;
     }
 
-    const url = `https://www.google.com/maps/search/?api=1&query=${obra.latitude},${obra.longitude}`;
+    const url = Platform.select({
+      ios: `maps://0,0?q=${obra.latitude},${obra.longitude}(${obra.nome})`,
+      android: `geo:${obra.latitude},${obra.longitude}?q=${obra.latitude},${obra.longitude}(${obra.nome})`,
+      web: `https://www.google.com/maps/search/?api=1&query=${obra.latitude},${obra.longitude}`
+    });
+
     Linking.openURL(url);
   }
 
@@ -165,7 +171,12 @@ export default function ObrasScreen() {
       return;
     }
 
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${obra.latitude},${obra.longitude}`;
+    const url = Platform.select({
+      ios: `maps://0,0?saddr=&daddr=${obra.latitude},${obra.longitude}&dirflg=d`,
+      android: `google.navigation:q=${obra.latitude},${obra.longitude}`,
+      web: `https://www.google.com/maps/dir/?api=1&destination=${obra.latitude},${obra.longitude}`
+    });
+
     Linking.openURL(url);
   }
 
@@ -296,13 +307,21 @@ export default function ObrasScreen() {
                     <Text style={styles.coordenadasValor}>{longitude.toFixed(6)}</Text>
                   </View>
                   
-                  <TouchableOpacity 
-                    style={styles.botaoVerMapa}
-                    onPress={() => abrirMapa({ latitude, longitude, nome })}
-                  >
-                    <Ionicons name="map" size={16} color="#2563eb" />
-                    <Text style={styles.botaoVerMapaTexto}>Ver no Google Maps</Text>
-                  </TouchableOpacity>
+                  <View style={styles.miniMapa}>
+                    <MapView
+                      style={styles.mapaPreview}
+                      initialRegion={{
+                        latitude: latitude,
+                        longitude: longitude,
+                        latitudeDelta: 0.01,
+                        longitudeDelta: 0.01,
+                      }}
+                      scrollEnabled={false}
+                      zoomEnabled={false}
+                    >
+                      <Marker coordinate={{ latitude, longitude }} />
+                    </MapView>
+                  </View>
                 </View>
               )}
             </View>
@@ -365,13 +384,6 @@ export default function ObrasScreen() {
                     <Text style={styles.obraInfoTexto}>
                       Início: {obra.data_inicio.split('-').reverse().join('/')}
                     </Text>
-                  </View>
-                )}
-
-                {obra.latitude && obra.longitude && (
-                  <View style={styles.obraInfo}>
-                    <Ionicons name="navigate" size={14} color="#10b981" />
-                    <Text style={styles.obraInfoTexto}>Localização registrada</Text>
                   </View>
                 )}
 
@@ -471,6 +483,27 @@ export default function ObrasScreen() {
                       <Text style={styles.detalheValor}>
                         {obraSelecionada.latitude.toFixed(6)}, {obraSelecionada.longitude.toFixed(6)}
                       </Text>
+                    </View>
+
+                    <View style={styles.mapaDetalhe}>
+                      <MapView
+                        style={styles.mapaDetalhePreview}
+                        initialRegion={{
+                          latitude: obraSelecionada.latitude,
+                          longitude: obraSelecionada.longitude,
+                          latitudeDelta: 0.01,
+                          longitudeDelta: 0.01,
+                        }}
+                        scrollEnabled={false}
+                        zoomEnabled={false}
+                      >
+                        <Marker 
+                          coordinate={{ 
+                            latitude: obraSelecionada.latitude, 
+                            longitude: obraSelecionada.longitude 
+                          }} 
+                        />
+                      </MapView>
                     </View>
 
                     <View style={styles.botoesMapa}>
@@ -610,16 +643,16 @@ const styles = StyleSheet.create({
   },
   coordenadasLabel: { fontSize: 11, color: '#64748b' },
   coordenadasValor: { fontSize: 11, fontWeight: 'bold', color: '#1e293b' },
-  botaoVerMapa: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#eff6ff',
-    padding: 8,
-    borderRadius: 6,
+  miniMapa: {
     marginTop: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+    height: 150,
   },
-  botaoVerMapaTexto: { color: '#2563eb', fontSize: 12, fontWeight: 'bold', marginLeft: 5 },
+  mapaPreview: {
+    width: '100%',
+    height: '100%',
+  },
   botaoSalvar: {
     backgroundColor: '#10b981',
     borderRadius: 8,
@@ -752,6 +785,16 @@ const styles = StyleSheet.create({
   statusBadgeTexto: {
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  mapaDetalhe: {
+    marginTop: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+    height: 200,
+  },
+  mapaDetalhePreview: {
+    width: '100%',
+    height: '100%',
   },
   botoesMapa: {
     flexDirection: 'row',
