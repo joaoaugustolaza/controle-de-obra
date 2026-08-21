@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Linking, Platform, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { syncManager } from '../services/syncManager';
 
 export default function ObrasScreen() {
+  const navigation = useNavigation();
   const [obras, setObras] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editando, setEditando] = useState(null);
@@ -64,6 +66,10 @@ export default function ObrasScreen() {
   function verDetalhes(obra) {
     setObraSelecionada(obra);
     setMostrarDetalhes(true);
+  }
+
+  function abrirListaFuncionarios(obra) {
+    navigation.navigate('Ponto', { obraId: obra.id, obraNome: obra.nome });
   }
 
   async function capturarLocalizacaoAtual() {
@@ -331,7 +337,7 @@ export default function ObrasScreen() {
               <TouchableOpacity
                 key={obra.id}
                 style={styles.obraCard}
-                onPress={() => verDetalhes(obra)}
+                onPress={() => abrirListaFuncionarios(obra)}
               >
                 <View style={styles.obraHeader}>
                   <Text style={styles.obraNome}>{obra.nome}</Text>
@@ -378,7 +384,10 @@ export default function ObrasScreen() {
                 <View style={styles.obraAcoes}>
                   <TouchableOpacity 
                     style={styles.botaoVerDetalhes}
-                    onPress={() => verDetalhes(obra)}
+                    onPress={(e) => {
+                      if (e && e.stopPropagation) e.stopPropagation();
+                      verDetalhes(obra);
+                    }}
                   >
                     <Ionicons name="eye" size={18} color="#8b5cf6" />
                     <Text style={styles.botaoVerDetalhesTexto}>Ver Detalhes</Text>
@@ -386,7 +395,10 @@ export default function ObrasScreen() {
 
                   <TouchableOpacity 
                     style={styles.botaoEditar}
-                    onPress={() => iniciarEdicao(obra)}
+                    onPress={(e) => {
+                      if (e && e.stopPropagation) e.stopPropagation();
+                      iniciarEdicao(obra);
+                    }}
                   >
                     <Ionicons name="create" size={18} color="#2563eb" />
                     <Text style={styles.botaoEditarTexto}>Editar</Text>
@@ -394,7 +406,10 @@ export default function ObrasScreen() {
 
                   <TouchableOpacity 
                     style={styles.botaoExcluir}
-                    onPress={() => excluirObra(obra.id)}
+                    onPress={(e) => {
+                      if (e && e.stopPropagation) e.stopPropagation();
+                      excluirObra(obra.id);
+                    }}
                   >
                     <Ionicons name="trash" size={18} color="#ef4444" />
                     <Text style={styles.botaoExcluirTexto}>Excluir</Text>
