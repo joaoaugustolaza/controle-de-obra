@@ -266,6 +266,7 @@ export default function ObrasScreen() {
               </View>
             </View>
 
+            {/* Seção de Localização */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Localização (GPS)</Text>
               
@@ -327,7 +328,11 @@ export default function ObrasScreen() {
             </View>
           ) : (
             obras.map((obra) => (
-              <View key={obra.id} style={styles.obraCard}>
+              <TouchableOpacity
+                key={obra.id}
+                style={styles.obraCard}
+                onPress={() => verDetalhes(obra)}
+              >
                 <View style={styles.obraHeader}>
                   <Text style={styles.obraNome}>{obra.nome}</Text>
                   <View style={[
@@ -395,12 +400,13 @@ export default function ObrasScreen() {
                     <Text style={styles.botaoExcluirTexto}>Excluir</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </View>
       </View>
 
+      {/* Modal de Detalhes da Obra */}
       <Modal
         visible={mostrarDetalhes}
         animationType="slide"
