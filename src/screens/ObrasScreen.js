@@ -12,7 +12,6 @@ export default function ObrasScreen() {
   const [nome, setNome] = useState('');
   const [endereco, setEndereco] = useState('');
   const [responsavel, setResponsavel] = useState('');
-  const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0]);
   const [status, setStatus] = useState('Ativa');
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
@@ -145,7 +144,6 @@ export default function ObrasScreen() {
     setNome('');
     setEndereco('');
     setResponsavel('');
-    setDataInicio(new Date().toISOString().split('T')[0]);
     setStatus('Ativa');
     setLatitude(null);
     setLongitude(null);
@@ -159,7 +157,6 @@ export default function ObrasScreen() {
     setNome(obra.nome);
     setEndereco(obra.endereco || '');
     setResponsavel(obra.responsavel || '');
-    setDataInicio(obra.data_inicio || new Date().toISOString().split('T')[0]);
     setStatus(obra.status || 'Ativa');
     setLatitude(obra.latitude || null);
     setLongitude(obra.longitude || null);
@@ -206,7 +203,6 @@ export default function ObrasScreen() {
       nome: nome.trim(),
       endereco: endereco.trim() || null,
       responsavel: responsavel.trim() || null,
-      data_inicio: dataInicio,
       status: status,
       latitude: latitude,
       longitude: longitude
@@ -242,10 +238,7 @@ export default function ObrasScreen() {
       
       const { data, error } = await supabase
         .from('obras')
-        .insert([{
-          ...obraData,
-          created_at: new Date().toISOString()
-        }])
+        .insert([obraData])
         .select();
 
       console.log('Resultado da criação:', { data, error });
@@ -379,16 +372,6 @@ export default function ObrasScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Data de Início</Text>
-                <TextInput
-                  style={styles.input}
-                  value={dataInicio}
-                  onChangeText={setDataInicio}
-                  placeholder="AAAA-MM-DD"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Status</Text>
                 <View style={styles.statusButtons}>
                   {['Ativa', 'Paralisada', 'Concluída'].map((s) => (
@@ -501,15 +484,6 @@ export default function ObrasScreen() {
                     <View style={styles.obraInfo}>
                       <Ionicons name="person" size={14} color="#64748b" />
                       <Text style={styles.obraInfoTexto}>{obra.responsavel}</Text>
-                    </View>
-                  )}
-
-                  {obra.data_inicio && (
-                    <View style={styles.obraInfo}>
-                      <Ionicons name="calendar" size={14} color="#64748b" />
-                      <Text style={styles.obraInfoTexto}>
-                        Início: {obra.data_inicio.split('-').reverse().join('/')}
-                      </Text>
                     </View>
                   )}
 
