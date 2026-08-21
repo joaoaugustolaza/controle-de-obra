@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { syncManager } from '../services/syncManager';
 
-export default function ObrasScreen({ navigation }) {
+export default function ObrasScreen() {
   const [obras, setObras] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editando, setEditando] = useState(null);
@@ -64,10 +64,6 @@ export default function ObrasScreen({ navigation }) {
   function verDetalhes(obra) {
     setObraSelecionada(obra);
     setMostrarDetalhes(true);
-  }
-
-  function abrirListaFuncionarios(obra) {
-    navigation.navigate('Funcionários', { obraId: obra.id, obraNome: obra.nome });
   }
 
   async function capturarLocalizacaoAtual() {
@@ -270,7 +266,6 @@ export default function ObrasScreen({ navigation }) {
               </View>
             </View>
 
-            {/* Seção de Localização */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Localização (GPS)</Text>
               
@@ -332,11 +327,7 @@ export default function ObrasScreen({ navigation }) {
             </View>
           ) : (
             obras.map((obra) => (
-              <TouchableOpacity
-                key={obra.id}
-                style={styles.obraCard}
-                onPress={() => abrirListaFuncionarios(obra)}
-              >
+              <View key={obra.id} style={styles.obraCard}>
                 <View style={styles.obraHeader}>
                   <Text style={styles.obraNome}>{obra.nome}</Text>
                   <View style={[
@@ -382,10 +373,7 @@ export default function ObrasScreen({ navigation }) {
                 <View style={styles.obraAcoes}>
                   <TouchableOpacity 
                     style={styles.botaoVerDetalhes}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      verDetalhes(obra);
-                    }}
+                    onPress={() => verDetalhes(obra)}
                   >
                     <Ionicons name="eye" size={18} color="#8b5cf6" />
                     <Text style={styles.botaoVerDetalhesTexto}>Ver Detalhes</Text>
@@ -393,10 +381,7 @@ export default function ObrasScreen({ navigation }) {
 
                   <TouchableOpacity 
                     style={styles.botaoEditar}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      iniciarEdicao(obra);
-                    }}
+                    onPress={() => iniciarEdicao(obra)}
                   >
                     <Ionicons name="create" size={18} color="#2563eb" />
                     <Text style={styles.botaoEditarTexto}>Editar</Text>
@@ -404,22 +389,18 @@ export default function ObrasScreen({ navigation }) {
 
                   <TouchableOpacity 
                     style={styles.botaoExcluir}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      excluirObra(obra.id);
-                    }}
+                    onPress={() => excluirObra(obra.id)}
                   >
                     <Ionicons name="trash" size={18} color="#ef4444" />
                     <Text style={styles.botaoExcluirTexto}>Excluir</Text>
                   </TouchableOpacity>
                 </View>
-              </TouchableOpacity>
+              </View>
             ))
           )}
         </View>
       </View>
 
-      {/* Modal de Detalhes da Obra */}
       <Modal
         visible={mostrarDetalhes}
         animationType="slide"
