@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Linking, Platform, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { syncManager } from '../services/syncManager';
 
-export default function ObrasScreen() {
-  const navigation = useNavigation();
+export default function ObrasScreen({ navigation }) {
   const [obras, setObras] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editando, setEditando] = useState(null);
@@ -69,7 +67,11 @@ export default function ObrasScreen() {
   }
 
   function abrirListaFuncionarios(obra) {
-    navigation.navigate('Ponto', { obraId: obra.id, obraNome: obra.nome });
+    if (navigation && navigation.navigate) {
+      navigation.navigate('Ponto', { obraId: obra.id, obraNome: obra.nome });
+    } else {
+      alert('Navegação não disponível. Use a aba "Ponto" no menu inferior.');
+    }
   }
 
   async function capturarLocalizacaoAtual() {
@@ -385,7 +387,7 @@ export default function ObrasScreen() {
                   <TouchableOpacity 
                     style={styles.botaoVerDetalhes}
                     onPress={(e) => {
-                      if (e && e.stopPropagation) e.stopPropagation();
+                      e.stopPropagation();
                       verDetalhes(obra);
                     }}
                   >
@@ -396,7 +398,7 @@ export default function ObrasScreen() {
                   <TouchableOpacity 
                     style={styles.botaoEditar}
                     onPress={(e) => {
-                      if (e && e.stopPropagation) e.stopPropagation();
+                      e.stopPropagation();
                       iniciarEdicao(obra);
                     }}
                   >
@@ -407,7 +409,7 @@ export default function ObrasScreen() {
                   <TouchableOpacity 
                     style={styles.botaoExcluir}
                     onPress={(e) => {
-                      if (e && e.stopPropagation) e.stopPropagation();
+                      e.stopPropagation();
                       excluirObra(obra.id);
                     }}
                   >
