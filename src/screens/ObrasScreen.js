@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Linking, Platform, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Linking, Platform, Modal, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { syncManager } from '../services/syncManager';
@@ -256,352 +256,359 @@ export default function ObrasScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.headerTitulo}>Obras</Text>
-          <View style={[styles.statusBadge, isOnline ? styles.statusOnline : styles.statusOffline]}>
-            <Ionicons 
-              name={isOnline ? 'wifi' : 'wifi-outline'} 
-              size={14} 
-              color="#fff" 
-            />
-            <Text style={styles.statusText}>{isOnline ? 'Online' : 'Offline'}</Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <Text style={styles.headerTitulo}>Obras</Text>
+            <View style={[styles.statusBadge, isOnline ? styles.statusOnline : styles.statusOffline]}>
+              <Ionicons 
+                name={isOnline ? 'wifi' : 'wifi-outline'} 
+                size={14} 
+                color="#fff" 
+              />
+              <Text style={styles.statusText}>{isOnline ? 'Online' : 'Offline'}</Text>
+            </View>
           </View>
+          <Text style={styles.headerSubtitulo}>Gerencie suas obras</Text>
         </View>
-        <Text style={styles.headerSubtitulo}>Gerencie suas obras</Text>
-      </View>
 
-      <View style={styles.content}>
-        <TouchableOpacity 
-          style={styles.botaoNovaObra}
-          onPress={() => setMostrarFormulario(!mostrarFormulario)}
-        >
-          <Ionicons name={mostrarFormulario ? 'close' : 'add'} size={24} color="#fff" />
-          <Text style={styles.botaoNovaObraTexto}>
-            {mostrarFormulario ? 'Cancelar' : 'Nova Obra'}
-          </Text>
-        </TouchableOpacity>
-
-        {mostrarFormulario && (
-          <View style={styles.formulario}>
-            <Text style={styles.formularioTitulo}>
-              {editando ? 'Editar Obra' : 'Nova Obra'}
+        <View style={styles.content}>
+          <TouchableOpacity 
+            style={styles.botaoNovaObra}
+            onPress={() => setMostrarFormulario(!mostrarFormulario)}
+          >
+            <Ionicons name={mostrarFormulario ? 'close' : 'add'} size={24} color="#fff" />
+            <Text style={styles.botaoNovaObraTexto}>
+              {mostrarFormulario ? 'Cancelar' : 'Nova Obra'}
             </Text>
+          </TouchableOpacity>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Nome da Obra *</Text>
-              <TextInput
-                style={styles.input}
-                value={nome}
-                onChangeText={setNome}
-                placeholder="Ex: Residencial Nova Esperança"
-              />
-            </View>
+          {mostrarFormulario && (
+            <View style={styles.formulario}>
+              <Text style={styles.formularioTitulo}>
+                {editando ? 'Editar Obra' : 'Nova Obra'}
+              </Text>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Endereço</Text>
-              <TextInput
-                style={styles.input}
-                value={endereco}
-                onChangeText={setEndereco}
-                placeholder="Ex: Rua das Flores, 123"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Responsável</Text>
-              <TextInput
-                style={styles.input}
-                value={responsavel}
-                onChangeText={setResponsavel}
-                placeholder="Nome do responsável"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Data de Início</Text>
-              <TextInput
-                style={styles.input}
-                value={dataInicio}
-                onChangeText={setDataInicio}
-                placeholder="AAAA-MM-DD"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Status</Text>
-              <View style={styles.statusButtons}>
-                {['Ativa', 'Paralisada', 'Concluída'].map((s) => (
-                  <TouchableOpacity
-                    key={s}
-                    style={[
-                      styles.statusButton,
-                      status === s && styles.statusButtonSelecionado
-                    ]}
-                    onPress={() => setStatus(s)}
-                  >
-                    <Text style={[
-                      styles.statusButtonText,
-                      status === s && styles.statusButtonTextSelecionado
-                    ]}>
-                      {s}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Localização (GPS)</Text>
-              
-              <TouchableOpacity 
-                style={styles.botaoLocalizacao}
-                onPress={capturarLocalizacaoAtual}
-                disabled={capturandoLocalizacao}
-              >
-                <Ionicons 
-                  name={capturandoLocalizacao ? 'hourglass' : 'location'} 
-                  size={20} 
-                  color="#fff" 
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Nome da Obra *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={nome}
+                  onChangeText={setNome}
+                  placeholder="Ex: Residencial Nova Esperança"
                 />
-                <Text style={styles.botaoLocalizacaoTexto}>
-                  {capturandoLocalizacao ? 'Capturando...' : 'Capturar Localização Atual'}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Endereço</Text>
+                <TextInput
+                  style={styles.input}
+                  value={endereco}
+                  onChangeText={setEndereco}
+                  placeholder="Ex: Rua das Flores, 123"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Responsável</Text>
+                <TextInput
+                  style={styles.input}
+                  value={responsavel}
+                  onChangeText={setResponsavel}
+                  placeholder="Nome do responsável"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Data de Início</Text>
+                <TextInput
+                  style={styles.input}
+                  value={dataInicio}
+                  onChangeText={setDataInicio}
+                  placeholder="AAAA-MM-DD"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Status</Text>
+                <View style={styles.statusButtons}>
+                  {['Ativa', 'Paralisada', 'Concluída'].map((s) => (
+                    <TouchableOpacity
+                      key={s}
+                      style={[
+                        styles.statusButton,
+                        status === s && styles.statusButtonSelecionado
+                      ]}
+                      onPress={() => setStatus(s)}
+                    >
+                      <Text style={[
+                        styles.statusButtonText,
+                        status === s && styles.statusButtonTextSelecionado
+                      ]}>
+                        {s}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Localização (GPS)</Text>
+                
+                <TouchableOpacity 
+                  style={styles.botaoLocalizacao}
+                  onPress={capturarLocalizacaoAtual}
+                  disabled={capturandoLocalizacao}
+                >
+                  <Ionicons 
+                    name={capturandoLocalizacao ? 'hourglass' : 'location'} 
+                    size={20} 
+                    color="#fff" 
+                  />
+                  <Text style={styles.botaoLocalizacaoTexto}>
+                    {capturandoLocalizacao ? 'Capturando...' : 'Capturar Localização Atual'}
+                  </Text>
+                </TouchableOpacity>
+
+                {(latitude && longitude) && (
+                  <View style={styles.localizacaoInfo}>
+                    <View style={styles.coordenadasContainer}>
+                      <Text style={styles.coordenadasLabel}>Latitude:</Text>
+                      <Text style={styles.coordenadasValor}>{latitude.toFixed(6)}</Text>
+                    </View>
+                    <View style={styles.coordenadasContainer}>
+                      <Text style={styles.coordenadasLabel}>Longitude:</Text>
+                      <Text style={styles.coordenadasValor}>{longitude.toFixed(6)}</Text>
+                    </View>
+                    
+                    <TouchableOpacity 
+                      style={styles.botaoVerMapa}
+                      onPress={() => abrirMapa({ latitude, longitude, nome })}
+                    >
+                      <Ionicons name="map" size={16} color="#2563eb" />
+                      <Text style={styles.botaoVerMapaTexto}>Ver no Google Maps</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+
+              <TouchableOpacity 
+                style={styles.botaoSalvar}
+                onPress={salvarObra}
+              >
+                <Text style={styles.botaoSalvarTexto}>
+                  {editando ? 'Atualizar Obra' : 'Salvar Obra'}
                 </Text>
               </TouchableOpacity>
-
-              {(latitude && longitude) && (
-                <View style={styles.localizacaoInfo}>
-                  <View style={styles.coordenadasContainer}>
-                    <Text style={styles.coordenadasLabel}>Latitude:</Text>
-                    <Text style={styles.coordenadasValor}>{latitude.toFixed(6)}</Text>
-                  </View>
-                  <View style={styles.coordenadasContainer}>
-                    <Text style={styles.coordenadasLabel}>Longitude:</Text>
-                    <Text style={styles.coordenadasValor}>{longitude.toFixed(6)}</Text>
-                  </View>
-                  
-                  <TouchableOpacity 
-                    style={styles.botaoVerMapa}
-                    onPress={() => abrirMapa({ latitude, longitude, nome })}
-                  >
-                    <Ionicons name="map" size={16} color="#2563eb" />
-                    <Text style={styles.botaoVerMapaTexto}>Ver no Google Maps</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
             </View>
-
-            <TouchableOpacity 
-              style={styles.botaoSalvar}
-              onPress={salvarObra}
-            >
-              <Text style={styles.botaoSalvarTexto}>
-                {editando ? 'Atualizar Obra' : 'Salvar Obra'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <View style={styles.listaObras}>
-          <Text style={styles.listaTitulo}>Obras Cadastradas ({obras.length})</Text>
-
-          {obras.length === 0 ? (
-            <View style={styles.vazio}>
-              <Ionicons name="business-outline" size={48} color="#cbd5e1" />
-              <Text style={styles.vazioTexto}>Nenhuma obra cadastrada</Text>
-            </View>
-          ) : (
-            obras.map((obra) => (
-              <TouchableOpacity
-                key={obra.id}
-                style={styles.obraCard}
-                onPress={() => abrirMarcacaoPresenca(obra)}
-              >
-                <View style={styles.obraHeader}>
-                  <Text style={styles.obraNome}>{obra.nome}</Text>
-                  <View style={[
-                    styles.obraStatus,
-                    obra.status === 'Ativa' && styles.statusAtiva,
-                    obra.status === 'Paralisada' && styles.statusParalisada,
-                    obra.status === 'Concluída' && styles.statusConcluida
-                  ]}>
-                    <Text style={styles.obraStatusTexto}>{obra.status}</Text>
-                  </View>
-                </View>
-
-                {obra.endereco && (
-                  <View style={styles.obraInfo}>
-                    <Ionicons name="location" size={14} color="#64748b" />
-                    <Text style={styles.obraInfoTexto}>{obra.endereco}</Text>
-                  </View>
-                )}
-
-                {obra.responsavel && (
-                  <View style={styles.obraInfo}>
-                    <Ionicons name="person" size={14} color="#64748b" />
-                    <Text style={styles.obraInfoTexto}>{obra.responsavel}</Text>
-                  </View>
-                )}
-
-                {obra.data_inicio && (
-                  <View style={styles.obraInfo}>
-                    <Ionicons name="calendar" size={14} color="#64748b" />
-                    <Text style={styles.obraInfoTexto}>
-                      Início: {obra.data_inicio.split('-').reverse().join('/')}
-                    </Text>
-                  </View>
-                )}
-
-                {obra.latitude && obra.longitude && (
-                  <View style={styles.obraInfo}>
-                    <Ionicons name="navigate" size={14} color="#10b981" />
-                    <Text style={styles.obraInfoTexto}>Localização registrada</Text>
-                  </View>
-                )}
-
-                <View style={styles.obraAcoes}>
-                  <TouchableOpacity 
-                    style={styles.botaoEditar}
-                    onPress={() => iniciarEdicao(obra)}
-                  >
-                    <Ionicons name="create" size={18} color="#2563eb" />
-                    <Text style={styles.botaoEditarTexto}>Editar</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    style={styles.botaoExcluir}
-                    onPress={() => excluirObra(obra.id)}
-                  >
-                    <Ionicons name="trash" size={18} color="#ef4444" />
-                    <Text style={styles.botaoExcluirTexto}>Excluir</Text>
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            ))
           )}
-        </View>
-      </View>
 
-      {/* Modal de Marcação de Presença */}
+          <View style={styles.listaObras}>
+            <Text style={styles.listaTitulo}>Obras Cadastradas ({obras.length})</Text>
+
+            {obras.length === 0 ? (
+              <View style={styles.vazio}>
+                <Ionicons name="business-outline" size={48} color="#cbd5e1" />
+                <Text style={styles.vazioTexto}>Nenhuma obra cadastrada</Text>
+              </View>
+            ) : (
+              obras.map((obra) => (
+                <TouchableOpacity
+                  key={obra.id}
+                  style={styles.obraCard}
+                  onPress={() => abrirMarcacaoPresenca(obra)}
+                >
+                  <View style={styles.obraHeader}>
+                    <Text style={styles.obraNome}>{obra.nome}</Text>
+                    <View style={[
+                      styles.obraStatus,
+                      obra.status === 'Ativa' && styles.statusAtiva,
+                      obra.status === 'Paralisada' && styles.statusParalisada,
+                      obra.status === 'Concluída' && styles.statusConcluida
+                    ]}>
+                      <Text style={styles.obraStatusTexto}>{obra.status}</Text>
+                    </View>
+                  </View>
+
+                  {obra.endereco && (
+                    <View style={styles.obraInfo}>
+                      <Ionicons name="location" size={14} color="#64748b" />
+                      <Text style={styles.obraInfoTexto}>{obra.endereco}</Text>
+                    </View>
+                  )}
+
+                  {obra.responsavel && (
+                    <View style={styles.obraInfo}>
+                      <Ionicons name="person" size={14} color="#64748b" />
+                      <Text style={styles.obraInfoTexto}>{obra.responsavel}</Text>
+                    </View>
+                  )}
+
+                  {obra.data_inicio && (
+                    <View style={styles.obraInfo}>
+                      <Ionicons name="calendar" size={14} color="#64748b" />
+                      <Text style={styles.obraInfoTexto}>
+                        Início: {obra.data_inicio.split('-').reverse().join('/')}
+                      </Text>
+                    </View>
+                  )}
+
+                  {obra.latitude && obra.longitude && (
+                    <View style={styles.obraInfo}>
+                      <Ionicons name="navigate" size={14} color="#10b981" />
+                      <Text style={styles.obraInfoTexto}>Localização registrada</Text>
+                    </View>
+                  )}
+
+                  <View style={styles.obraAcoes}>
+                    <TouchableOpacity 
+                      style={styles.botaoEditar}
+                      onPress={() => iniciarEdicao(obra)}
+                    >
+                      <Ionicons name="create" size={18} color="#2563eb" />
+                      <Text style={styles.botaoEditarTexto}>Editar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={styles.botaoExcluir}
+                      onPress={() => excluirObra(obra.id)}
+                    >
+                      <Ionicons name="trash" size={18} color="#ef4444" />
+                      <Text style={styles.botaoExcluirTexto}>Excluir</Text>
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Modal Fullscreen de Marcação de Presença */}
       <Modal
         visible={mostrarPresenca}
         animationType="slide"
-        transparent={true}
+        presentationStyle="fullScreen"
         onRequestClose={() => setMostrarPresenca(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderInfo}>
-                <Text style={styles.modalTitulo}>Marcar Presença</Text>
-                <Text style={styles.modalSubtitulo}>{obraSelecionada?.nome}</Text>
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity 
+              style={styles.botaoVoltar}
+              onPress={() => setMostrarPresenca(false)}
+            >
+              <Ionicons name="arrow-back" size={28} color="#fff" />
+            </TouchableOpacity>
+            <View style={styles.modalHeaderInfo}>
+              <Text style={styles.modalTitulo}>Marcar Presença</Text>
+              <Text style={styles.modalSubtitulo}>{obraSelecionada?.nome}</Text>
+            </View>
+          </View>
+
+          <View style={styles.dataContainer}>
+            <TouchableOpacity onPress={() => mudarData(-1)} style={styles.botaoData}>
+              <Ionicons name="chevron-back" size={24} color="#2563eb" />
+            </TouchableOpacity>
+            <Text style={styles.dataTexto}>{formatarData(dataHoje)}</Text>
+            <TouchableOpacity onPress={() => mudarData(1)} style={styles.botaoData}>
+              <Ionicons name="chevron-forward" size={24} color="#2563eb" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalBody}>
+            {funcionarios.length === 0 ? (
+              <View style={styles.vazioModal}>
+                <Ionicons name="people-outline" size={64} color="#cbd5e1" />
+                <Text style={styles.vazioModalTexto}>Nenhum funcionário nesta obra</Text>
+                <Text style={styles.vazioModalSubtexto}>
+                  Vá em "Funcionários" para vincular funcionários a esta obra
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => setMostrarPresenca(false)}>
-                <Ionicons name="close" size={28} color="#64748b" />
-              </TouchableOpacity>
-            </View>
+            ) : (
+              funcionarios.map((func) => {
+                const manhaKey = `${func.id}_Manhã`;
+                const tardeKey = `${func.id}_Tarde`;
+                const manhaMarcado = presencas[manhaKey];
+                const tardeMarcado = presencas[tardeKey];
 
-            <View style={styles.dataContainer}>
-              <TouchableOpacity onPress={() => mudarData(-1)} style={styles.botaoData}>
-                <Ionicons name="chevron-back" size={24} color="#2563eb" />
-              </TouchableOpacity>
-              <Text style={styles.dataTexto}>{formatarData(dataHoje)}</Text>
-              <TouchableOpacity onPress={() => mudarData(1)} style={styles.botaoData}>
-                <Ionicons name="chevron-forward" size={24} color="#2563eb" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalBody}>
-              {funcionarios.length === 0 ? (
-                <View style={styles.vazioModal}>
-                  <Ionicons name="people-outline" size={48} color="#cbd5e1" />
-                  <Text style={styles.vazioModalTexto}>Nenhum funcionário nesta obra</Text>
-                </View>
-              ) : (
-                funcionarios.map((func) => {
-                  const manhaKey = `${func.id}_Manhã`;
-                  const tardeKey = `${func.id}_Tarde`;
-                  const manhaMarcado = presencas[manhaKey];
-                  const tardeMarcado = presencas[tardeKey];
-
-                  return (
-                    <View key={func.id} style={styles.funcionarioCard}>
-                      <View style={styles.funcionarioHeader}>
-                        <Ionicons name="person" size={24} color="#2563eb" />
-                        <View style={styles.funcionarioInfo}>
-                          <Text style={styles.funcionarioNome}>{func.nome}</Text>
-                          {func.cargo && <Text style={styles.funcionarioCargo}>{func.cargo}</Text>}
-                        </View>
-                      </View>
-
-                      <View style={styles.botoesContainer}>
-                        <TouchableOpacity
-                          style={[
-                            styles.botaoPeriodo,
-                            manhaMarcado && styles.botaoMarcado
-                          ]}
-                          onPress={() => marcarPresenca(func.id, 'Manhã')}
-                        >
-                          <Ionicons
-                            name={manhaMarcado ? 'checkmark-circle' : 'sunny'}
-                            size={20}
-                            color={manhaMarcado ? '#fff' : '#f59e0b'}
-                          />
-                          <Text style={[
-                            styles.botaoPeriodoTexto,
-                            manhaMarcado && styles.botaoPeriodoTextoMarcado
-                          ]}>
-                            {manhaMarcado ? 'Manhã ✓' : 'Manhã'}
-                          </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[
-                            styles.botaoPeriodo,
-                            tardeMarcado && styles.botaoMarcado
-                          ]}
-                          onPress={() => marcarPresenca(func.id, 'Tarde')}
-                        >
-                          <Ionicons
-                            name={tardeMarcado ? 'checkmark-circle' : 'cloudy'}
-                            size={20}
-                            color={tardeMarcado ? '#fff' : '#64748b'}
-                          />
-                          <Text style={[
-                            styles.botaoPeriodoTexto,
-                            tardeMarcado && styles.botaoPeriodoTextoMarcado
-                          ]}>
-                            {tardeMarcado ? 'Tarde ✓' : 'Tarde'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-
-                      <View style={styles.statusContainer}>
-                        {manhaMarcado && tardeMarcado && (
-                          <Text style={styles.statusCompleto}>✓ Dia Completo</Text>
-                        )}
-                        {(manhaMarcado || tardeMarcado) && !(manhaMarcado && tardeMarcado) && (
-                          <Text style={styles.statusParcial}>½ Meio Período</Text>
-                        )}
-                        {!manhaMarcado && !tardeMarcado && (
-                          <Text style={styles.statusAusente}>○ Ausente</Text>
-                        )}
+                return (
+                  <View key={func.id} style={styles.funcionarioCard}>
+                    <View style={styles.funcionarioHeader}>
+                      <Ionicons name="person" size={24} color="#2563eb" />
+                      <View style={styles.funcionarioInfo}>
+                        <Text style={styles.funcionarioNome}>{func.nome}</Text>
+                        {func.cargo && <Text style={styles.funcionarioCargo}>{func.cargo}</Text>}
                       </View>
                     </View>
-                  );
-                })
-              )}
-            </ScrollView>
-          </View>
-        </View>
+
+                    <View style={styles.botoesContainer}>
+                      <TouchableOpacity
+                        style={[
+                          styles.botaoPeriodo,
+                          manhaMarcado && styles.botaoMarcado
+                        ]}
+                        onPress={() => marcarPresenca(func.id, 'Manhã')}
+                      >
+                        <Ionicons
+                          name={manhaMarcado ? 'checkmark-circle' : 'sunny'}
+                          size={20}
+                          color={manhaMarcado ? '#fff' : '#f59e0b'}
+                        />
+                        <Text style={[
+                          styles.botaoPeriodoTexto,
+                          manhaMarcado && styles.botaoPeriodoTextoMarcado
+                        ]}>
+                          {manhaMarcado ? 'Manhã ✓' : 'Manhã'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.botaoPeriodo,
+                          tardeMarcado && styles.botaoMarcado
+                        ]}
+                        onPress={() => marcarPresenca(func.id, 'Tarde')}
+                      >
+                        <Ionicons
+                          name={tardeMarcado ? 'checkmark-circle' : 'cloudy'}
+                          size={20}
+                          color={tardeMarcado ? '#fff' : '#64748b'}
+                        />
+                        <Text style={[
+                          styles.botaoPeriodoTexto,
+                          tardeMarcado && styles.botaoPeriodoTextoMarcado
+                        ]}>
+                          {tardeMarcado ? 'Tarde ✓' : 'Tarde'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.statusContainer}>
+                      {manhaMarcado && tardeMarcado && (
+                        <Text style={styles.statusCompleto}>✓ Dia Completo</Text>
+                      )}
+                      {(manhaMarcado || tardeMarcado) && !(manhaMarcado && tardeMarcado) && (
+                        <Text style={styles.statusParcial}>½ Meio Período</Text>
+                      )}
+                      {!manhaMarcado && !tardeMarcado && (
+                        <Text style={styles.statusAusente}>○ Ausente</Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </ScrollView>
+        </SafeAreaView>
       </Modal>
-    </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
+  scrollView: { flex: 1 },
   header: {
     backgroundColor: '#2563eb',
     padding: 20,
@@ -778,33 +785,29 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   botaoExcluirTexto: { color: '#ef4444', fontSize: 12, fontWeight: 'bold', marginLeft: 5 },
-  modalOverlay: {
+  modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    maxHeight: '90%',
+    backgroundColor: '#f8fafc',
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    backgroundColor: '#2563eb',
     padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    paddingTop: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  botaoVoltar: {
+    padding: 10,
+    marginRight: 10,
   },
   modalHeaderInfo: { flex: 1 },
-  modalTitulo: { fontSize: 20, fontWeight: 'bold', color: '#1e293b' },
-  modalSubtitulo: { fontSize: 14, color: '#64748b', marginTop: 2 },
+  modalTitulo: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  modalSubtitulo: { fontSize: 14, color: '#bfdbfe', marginTop: 2 },
   dataContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#fff',
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
@@ -812,21 +815,26 @@ const styles = StyleSheet.create({
   botaoData: { padding: 10 },
   dataTexto: { fontSize: 18, fontWeight: 'bold', color: '#1e293b', marginHorizontal: 20 },
   modalBody: {
-    padding: 20,
-    maxHeight: 400,
+    flex: 1,
+    padding: 15,
   },
   vazioModal: {
     alignItems: 'center',
-    padding: 40,
+    justifyContent: 'center',
+    padding: 60,
   },
-  vazioModalTexto: { fontSize: 14, color: '#94a3b8', marginTop: 10 },
+  vazioModalTexto: { fontSize: 16, color: '#94a3b8', marginTop: 15 },
+  vazioModalSubtexto: { fontSize: 12, color: '#cbd5e1', marginTop: 5, textAlign: 'center' },
   funcionarioCard: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderRadius: 12,
     padding: 15,
     marginBottom: 15,
-    borderLeftWidth: 3,
-    borderLeftColor: '#2563eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   funcionarioHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
   funcionarioInfo: { marginLeft: 10, flex: 1 },
@@ -838,7 +846,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#f8fafc',
     padding: 12,
     borderRadius: 8,
     borderWidth: 2,
